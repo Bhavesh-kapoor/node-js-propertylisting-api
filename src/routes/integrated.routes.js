@@ -16,4 +16,8 @@ integratedRoutes.use("/reviews", verifyJwtToken, reviewRouter)
 /*-----------------------------------------blog------------------------------------*/
 import blogRoutes from "./blogs.route.js"
 integratedRoutes.use("/blogs", verifyJwtToken, blogRoutes)
+
+/*-----------------------------------------contact us------------------------------------*/
+import contactUsRoutes from "./contactUs.router.js"
+integratedRoutes.use("/contac-us", contactUsRoutes)
 export default integratedRoutes;

@@ -8,7 +8,7 @@ const createAndStoreOtp = async (identifier, type) => {
     }
 
     // Generate OTP
-    const otpCode = "1234"; // Replace generateOTP() with actual generator
+    const otpCode = generateOTP()
     const otpData = { otp: otpCode, type };
 
     if (type === "mobile") otpData.mobile = identifier;

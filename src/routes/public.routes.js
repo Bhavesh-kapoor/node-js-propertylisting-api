@@ -1,6 +1,6 @@
 import express from 'express';
 import { multerUpload } from '../middlewere/multer.middlewere.js';
-import { registerUser, loginUser, userValidations, loginWithMobile,loginAdmin } from '../controller/admin.controller.js';
+import { registerUser, loginUser, userValidations, loginWithMobile, loginAdmin } from '../controller/admin.controller.js';
 import { sendOtpMobile, verifyMobileOtp, sendOtpEmail, verifyEmailOtp } from '../controller/otp.controller.js';
 
 const router = express.Router();

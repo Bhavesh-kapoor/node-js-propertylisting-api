@@ -1,6 +1,7 @@
 import { User } from "../model/user.model.js";
 import mongoose from "mongoose";
 import crypto from 'crypto';
+import { transporter, mailOptions } from "../config/nodeMailerConfig.js";
 
 /*------------------------------------------to generate tokens-------------------------------------------*/
 const createAccessOrRefreshToken = async (user_id) => {

@@ -310,7 +310,7 @@ const fetchUser = asyncHandler(async (req, res) => {
       });
     }
 
-    if (!["admin", "photographer", "user"].includes(type)) {
+    if (!["admin", "dealer", "user"].includes(type)) {
       return res.status(400).json({
         success: false,
         message: `Invalid user type. Allowed values are 'admin', 'photographer', 'user'.`,

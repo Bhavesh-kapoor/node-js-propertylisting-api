@@ -3,6 +3,8 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { User } from "../model/user.model.js";
+import { sendMail } from "../utils/helper.js";
+import { otpContent } from "../utils/emailContent.js";
 /*---------------------------------------mobileOtp------------------------------------------------*/
 
 const sendOtpMobile = asyncHandler(async (req, res) => {
@@ -46,15 +48,19 @@ const sendOtpEmail = asyncHandler(async (req, res) => {
         return res.status(400).json(new ApiError(400, null, "Please provide a mobile number"));
     }
     const otp = await createAndStoreOtp(email, "email");
+
     console.log("Otp", otp)
+    const subject = `Your One-Time Password for ${process.env.APP_NAME}`
+    const htmlContent = otpContent(otp)
+    sendMail(email, subject, htmlContent)
     //write the code here to send otp via email
     return res.status(200).json(new ApiResponse(200, null, "OTP sent successfully"));
 })
 
 const verifyEmailOtp = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
-    if (!mobile || !otp) {
-        throw new ApiError(400, "Mobile number and OTP are required")
+    if (!email || !otp) {
+        throw new ApiError(400, "Email OTP are required")
     }
     const isVerified = await verifyOTP(email, otp);
     if (!isVerified) {

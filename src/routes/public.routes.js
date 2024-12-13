@@ -11,13 +11,12 @@ router.post('/login', loginUser);
 router.post('/admin-login', loginAdmin);
 router.post('/mobile-login', loginWithMobile);
 
-/*-------------------------------------------------------otp--------------------------------------------*/
+/*----------------------------------------------------otp-----------------------------------------------*/
 
 router.post('/send-mobile-otp', sendOtpMobile);
 router.post('/verify-mobile-otp', verifyMobileOtp);
 router.post('/send-email-otp', sendOtpEmail);
 router.post('/verify-email-otp', verifyEmailOtp);
-
 
 
 export default router;

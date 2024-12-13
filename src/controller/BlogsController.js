@@ -23,6 +23,9 @@ const getAllBlogs = asyncHandler(async (req, res) => {
     title,
     category,
   } = req.query;
+  const pageNumber = parseInt(page, 10);
+  const limitNumber = parseInt(limit, 10);
+  const skip = (pageNumber - 1) * limitNumber;
   const matchConditions = {};
   if (title) {
     matchConditions.title = { $regex: title, $options: "i" };
@@ -42,8 +45,8 @@ const getAllBlogs = asyncHandler(async (req, res) => {
     { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
     { $addFields: { category: "$category.name" } },
     { $sort: { [sortkey]: sortdir === "desc" ? -1 : 1 } },
-    { $skip: (page - 1) * limit },
-    { $limit: parseInt(limit) },
+    { $skip: skip },
+    { $limit: limitNumber },
   ];
 
   if (category) {
@@ -55,19 +58,21 @@ const getAllBlogs = asyncHandler(async (req, res) => {
   try {
     const getall = await Blog.aggregate(aggregatePipeline);
     const totalBlogs = await Blog.countDocuments(matchConditions);
-    const pagination = {
-      currentPage: parseInt(page),
-      totalPages: Math.ceil(totalBlogs / limit),
-      totalItems: totalBlogs,
-      itemsPerPage: parseInt(limit),
-    };
 
     res
       .status(200)
       .json(
         new ApiResponse(
           200,
-          { pagination, result: getall },
+          {
+            result: getall,
+            pagination: {
+              totalPages: Math.ceil(totalBlogs / limitNumber),
+              currentPage: pageNumber,
+              totalItems: totalBlogs,
+              itemsPerPage: limitNumber,
+            },
+          },
           "Blog Data Fetch Successfully!"
         )
       );

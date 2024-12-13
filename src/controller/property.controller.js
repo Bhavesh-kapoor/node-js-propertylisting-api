@@ -50,11 +50,74 @@ const createProperty = asyncHandler(async (req, res) => {
     res.status(201).json(new ApiResponse(201, property, "Property created successfully"));
 })
 /*-------------------------------------------------get property list----------------------------------------*/
-const getProperties = asyncHandler(async (req, res) => {
+const getProperties = async (req, res) => {
+    try {
+        const {
+            city,
+            country,
+            name,
+            propertyType,
+            minPrice,
+            maxPrice,
+            status,
+            page = 1,
+            limit = 10,
+            sortBy = 'createdAt',
+            sortOrder = 'desc'
+        } = req.query;
 
-    const properties = await Property.find().populate("owner");
-    res.status(200).json(properties);
-})
+        const pageNumber = parseInt(page, 10);
+        const limitNumber = parseInt(limit, 10);
+        const skip = (pageNumber - 1) * limitNumber;
+        const filter = {};
+        if (city) {
+            filter['address.city'] = { $regex: city, $options: 'i' };
+        }
+        if (country) {
+            filter['address.country'] = { $regex: country, $options: 'i' };
+        }
+        if (name) {
+            filter.title = { $regex: name, $options: 'i' };
+        }
+        if (propertyType) {
+            filter.propertyType = propertyType;
+        }
+        if (minPrice || maxPrice) {
+            filter.price = {};
+            if (minPrice) filter.price.$gte = Number(minPrice);
+            if (maxPrice) filter.price.$lte = Number(maxPrice);
+        }
+        if (status) {
+            filter.status = status;
+        }
+        const sortOptions = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+
+        const properties = await Property.find(filter)
+            .populate({
+                path: 'owner',
+                select: 'name email isVerified',
+            })
+            .sort({ 'owner.isVerified': -1, ...sortOptions })
+            .skip(skip)
+            .limit(limitNumber);
+
+        const totalCount = await Property.countDocuments(filter);
+
+        res.status(200).json(new ApiResponse(200, {
+            result: properties,
+            pagination: {
+              totalPages: Math.ceil(totalCount / limitNumber),
+              currentPage: pageNumber,
+              totalItems: totalCount,
+              itemsPerPage: limitNumber,
+            },
+          }, "properties fatched successfully."));
+    } catch (error) {
+        console.error("Error fetching properties:", error);
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
 
 const getProperty = asyncHandler(async (req, res) => {
     const { id } = req.params;

@@ -8,8 +8,8 @@ import { logger } from "./config/logger.js";
 import path from 'path'
 import { fileURLToPath } from 'url';
 
-dotenv.config();
 
+dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 

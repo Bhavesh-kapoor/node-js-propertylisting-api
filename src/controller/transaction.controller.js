@@ -9,61 +9,61 @@ import { generateTransactionId } from "../utils/helper.js";
 /*----------------------------------------------create transaction------------------------------------------*/
 
 const createTransaction = asyncHandler(async (req, res) => {
-    const { packageId, paymentMethod } = req.body;
-    const userId = req.user._id;
-    const transactionExists = await Transaction.findOne({ userId, packageId });
-    if (transactionExists) {
-        throw new ApiError(409, "Transaction with this ID already exists");
+    const { userId, transactionId, subscriptionPlanId, amount, paymentMethod, status } = req.body;
+
+    const existingTransaction = await Transaction.findOne({ transactionId });
+    if (existingTransaction) {
+        return res.status(400).json(new ApiResponse(400, null, "Transaction with this ID already exists!"));
     }
-    if (!isValidObjectId(packageId)) {
-        throw new ApiError(400, "Invalid package ID");
-    }
-    const storagepPackage = await StoragePackage.findById(packageId);
-    if (!storagepPackage) {
-        throw new ApiError(404, "Storage package not found");
-    }
-    const transactionStr = generateTransactionId()
-    const newTransaction = new Transaction({
+
+    const transaction = new Transaction({
         userId,
-        packageId,
-        amount: storagepPackage.price,
+        transactionId,
+        subscriptionPlanId,
+        amount,
         paymentMethod,
-        transactionId: transactionStr
+        status,
     });
-    await newTransaction.save();
-    res.status(201).json(new ApiResponse(201, newTransaction, "Transaction created successfully"));
+
+    await transaction.save();
+    res.status(201).json(new ApiResponse(201, transaction, "Transaction created successfully!"));
 });
 
 /*----------------------------------------------get all transactions------------------------------------------*/
 
-const getAllTransactions = asyncHandler(async (req, res) => {
-    try {
-        const transactions = await Transaction.find();
+const getTransactions = asyncHandler(async (req, res) => {
+    const { userId, status, page = 1, limit = 10 } = req.query;
 
-        res.status(200).json(new ApiResponse(200, transactions, "All transactions fetched successfully!"));
-    } catch (error) {
-        console.error("Error fetching transactions:", error.message);
-        res.status(500).json(new ApiError(500, null, "Internal server error"));
-    }
+    const filter = {};
+    if (userId) filter.userId = userId;
+    if (status) filter.status = status;
+
+    const skip = (page - 1) * limit;
+
+    const transactions = await Transaction.find(filter)
+        .populate("userId")
+        .populate("subscriptionPlanId")
+        .skip(skip)
+        .limit(Number(limit))
+        .sort({ createdAt: -1 });
+
+    const totalCount = await Transaction.countDocuments(filter);
+
+    res.status(200).json(new ApiResponse(200, { transactions, totalCount, page, totalPages: Math.ceil(totalCount / limit) }, "Transactions fetched successfully!"));
 });
+
 
 /*----------------------------------------------get transaction by id------------------------------------------*/
 
 const getTransactionById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    try {
-        const transaction = await Transaction.findById(id);
-
-        if (!transaction) {
-            return res.status(404).json(new ApiError(404, null, "Transaction not found!"));
-        }
-
-        res.status(200).json(new ApiResponse(200, transaction, "Transaction fetched successfully!"));
-    } catch (error) {
-        console.error("Error fetching transaction by id:", error.message);
-        res.status(500).json(new ApiError(500, null, "Internal server error"));
+    const transaction = await Transaction.findById(id).populate("userId").populate("subscriptionPlanId");
+    if (!transaction) {
+        return res.status(404).json(new ApiResponse(404, null, "Transaction not found!"));
     }
+
+    res.status(200).json(new ApiResponse(200, transaction, "Transaction fetched successfully!"));
 });
 
 /*----------------------------------------------update transaction------------------------------------------*/
@@ -92,4 +92,15 @@ const updateTransaction = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, updatedTransaction, "Transaction updated successfully"));
 });
 
-export { createTransaction, getAllTransactions, getTransactionById, updateTransaction }
+const deleteTransaction = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const transaction = await Transaction.findById(id);
+    if (!transaction) {
+        return res.status(404).json(new ApiResponse(404, null, "Transaction not found!"));
+    }
+
+    await transaction.remove();
+    res.status(200).json(new ApiResponse(200, null, "Transaction deleted successfully!"));
+});
+export { createTransaction, getTransactions, getTransactionById, updateTransaction,deleteTransaction }

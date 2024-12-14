@@ -25,5 +25,10 @@ integratedRoutes.use("/contac-us", contactUsRoutes)
 import propertyRouter from "./property.routes.js";
 integratedRoutes.use("/property", verifyJwtToken, propertyRouter)
 
-
+/*-----------------------------------------subscription Plan------------------------------------*/
+import subscriptionsPlanRoute from "./subscriptionPlan.routes.js";
+integratedRoutes.use("/subscription", verifyJwtToken, subscriptionsPlanRoute)
+/*-----------------------------------------payment------------------------------------*/
+import paymentRoute from "./payment.routes.js";
+integratedRoutes.use("/payment", verifyJwtToken, paymentRoute)
 export default integratedRoutes;

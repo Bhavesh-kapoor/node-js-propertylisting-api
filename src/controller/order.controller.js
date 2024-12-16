@@ -6,9 +6,11 @@ import ApiError from "../utils/ApiError.js";
 import { isValidObjectId } from "../utils/helper.js";
 import { createOrder as initiateOrder } from "../config/razorPayConfig.js";
 import { uid } from 'uid';
+import { razorpay } from "../config/razorPayConfig.js";
+import { validateWebhookSignature } from "razorpay/dist/utils/razorpay-utils.js";
 /*-----------------------------------------create order-----------------------------------------*/
 const createOrder = asyncHandler(async (req, res) => {
-    const { subscriptionId, currency = 'INR' } = req.body;
+    const { subscriptionId, currency = 'INR', duration } = req.body;
     const user = req.user;
 
     if (!subscriptionId) {
@@ -21,24 +23,65 @@ const createOrder = asyncHandler(async (req, res) => {
     if (!subscription) {
         throw new ApiError(404, 'Subscription not found');
     }
-    const amountToPay = subscription.price;
+    const amountToPay = subscription.price[duration];
     const transactionId = `TXN_${uid()}`
-    const response = await initiateOrder(amountToPay, transactionId, currency);
+    let response;
+    try {
+        response = await initiateOrder(amountToPay, transactionId, currency)
+    } catch (error) {
+        throw new ApiError(error.statusCode, error.error)
+    }
     const transaction = new Transaction({
         userId: user._id,
         transactionId: transactionId,
         subscription: subscription._id,
-        amount: subscription.price,
+        amount: subscription.price[duration],
         currency: currency,
         status: "initiated",
+        duration: duration
     });
     await transaction.save();
     res.status(200).json(new ApiResponse(200, {
-        ...response, name: user.name,
+        ...response,
+        name: user.name,
         email: user.email,
         mobile: user.mobile
     }, 'Order initiated successfully'));
 })
 
+const verifyOrder = asyncHandler(async (req, res, next) => {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-export { createOrder };
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const secret = process.env.CLIENT_SECRET;
+    const body = razorpay_order_id + '|' + razorpay_payment_id;
+
+    try {
+        const isValidSignature = validateWebhookSignature(body, razorpay_signature, secret);
+        console.log("isValidSignature", isValidSignature)
+
+        if (!isValidSignature) {
+            return res.status(400).json({ error: "Payment verification failed" });
+        }
+        const payment = await razorpay.payments.fetch(razorpay_payment_id);
+
+        const transaction = await Transaction.findOne({
+            $or: [
+                { transactionId: razorpay_order_id },
+                { transactionId: razorpay_payment_id },
+            ],
+        });
+        transaction.transactionId = payment.id
+        req.paymentDetails = payment;
+        req.transaction = transaction
+        next();
+    } catch (error) {
+        console.error("Error verifying payment:", error.message);
+        return res.status(500).json({ error: "Error verifying payment", details: error.message });
+    }
+});
+
+export { createOrder, verifyOrder };

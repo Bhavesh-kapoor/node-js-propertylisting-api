@@ -19,9 +19,21 @@ const subscriptionPlanSchema = new mongoose.Schema({
         trim: true,
     },
     price: {
-        type: Number,
-        required: [true, 'Price is required'],
-        min: [0, 'Price cannot be negative'],
+        Monthly: {
+            type: Number,
+            required: [true, 'Monthly price is required'],
+            min: [0, 'Price cannot be negative'],
+        },
+        Quarterly: {
+            type: Number,
+            required: [true, 'Quarterly price is required'],
+            min: [0, 'Price cannot be negative'],
+        },
+        Yearly: {
+            type: Number,
+            required: [true, 'Yearly price is required'],
+            min: [0, 'Price cannot be negative'],
+        },
     },
     maxProperties: {
         type: Number,
@@ -33,6 +45,5 @@ const subscriptionPlanSchema = new mongoose.Schema({
         default: true,
     },
 }, { timestamps: true });
-
 
 export const SubscriptionPlan = mongoose.model('SubscriptionPlan', subscriptionPlanSchema);

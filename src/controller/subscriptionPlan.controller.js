@@ -4,44 +4,54 @@ import ApiResponse from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiError.js";
 /*----------------------------------Create a subscription plan---------------------------------*/
 const createSubscriptionPlan = asyncHandler(async (req, res) => {
-    const { name, description, price, maxProperties } = req.body;
+    const { name, title, description, price, maxProperties } = req.body;
 
-    const existingPlan = await SubscriptionPlan.findOne({ name: name, description: description, price: price });
-    if (existingPlan) {
-        return res.status(200).json(new ApiResponse(200, null, "Plan with this specification already exists!"))
+    if (!price || !price.Monthly || !price.Quarterly || !price.Yearly) {
+        return res.status(400).json(new ApiResponse(400, null, "All price fields (Monthly, Quarterly, Yearly) are required."));
     }
-
+    const existingPlan = await SubscriptionPlan.findOne({ name, title });
+    if (existingPlan) {
+        return res.status(400).json(new ApiResponse(400, null, "Plan with this name or title already exists!"));
+    }
     const newPlan = new SubscriptionPlan({
         name,
+        title,
         description,
         price,
         maxProperties,
     });
+    if (!newPlan) {
+        return res.status(500).json(new ApiResponse(500, null, "Failed to create subscription plan!"));
+    }
 
     await newPlan.save();
-    res.status(201).json(new ApiResponse(200, newPlan, " subscription Plan created successfully!"));
+    res.status(201).json(new ApiResponse(201, newPlan, "Subscription Plan created successfully!"));
 });
 /*----------------------------------update a subscription plan---------------------------------*/
+
 const updateSubscriptionPlan = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { name, description, price, maxProperties, isActive } = req.body;
-
+    const { name, title, description, price, maxProperties, isActive } = req.body;
+    if (!price || !price.Monthly || !price.Quarterly || !price.Yearly) {
+        return res.status(400).json(new ApiResponse(400, null, "All price fields (Monthly, Quarterly, Yearly) are required."));
+    }
     const existingPlan = await SubscriptionPlan.findOne({
         _id: { $ne: id },
-        name,
-        description,
-        price,
+        $or: [
+            { name },
+            { title },
+        ],
     });
 
     if (existingPlan) {
         return res
-            .status(200)
-            .json(new ApiResponse(200, null, "A similar plan already exists!"));
+            .status(400)
+            .json(new ApiResponse(400, null, "A similar plan with this name or title already exists!"));
     }
-/*----------------------------------Upadate a subscription plan---------------------------------*/
+
     const updatedPlan = await SubscriptionPlan.findByIdAndUpdate(
         id,
-        { name, description, price, maxProperties, isActive },
+        { name, title, description, price, maxProperties, isActive },
         { new: true }
     );
 
@@ -55,6 +65,7 @@ const updateSubscriptionPlan = asyncHandler(async (req, res) => {
         new ApiResponse(200, updatedPlan, "Subscription plan updated successfully!")
     );
 });
+
 /*----------------------------------get a subscription plan by Id---------------------------------*/
 const getSubscriptionPlanById = asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -88,15 +99,15 @@ const getAllSubscriptionPlans = asyncHandler(async (req, res) => {
         .sort({ price: 1 });
 
     res.status(200).json(
-        new ApiResponse(200, { 
+        new ApiResponse(200, {
             result: plans,
             pagination: {
-              totalPages: Math.ceil(totalPlans / limitNumber),
-              currentPage: pageNumber,
-              totalItems: totalPlans,
-              itemsPerPage: limitNumber,
+                totalPages: Math.ceil(totalPlans / limitNumber),
+                currentPage: pageNumber,
+                totalItems: totalPlans,
+                itemsPerPage: limitNumber,
             },
-          }, "Subscription plans fetched successfully!")
+        }, "Subscription plans fetched successfully!")
     );
 });
 

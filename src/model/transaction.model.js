@@ -17,6 +17,10 @@ const TransactionSchema = new Schema(
             ref: "SubscriptionPlan",
             required: false,
         },
+        duration:{
+            type: String,
+            enum:["Monthly","Quarterly","Yearly"]
+        },
         curruncy: {
             type: String,
         },
@@ -30,8 +34,8 @@ const TransactionSchema = new Schema(
         },
         status: {
             type: String,
-            enum: ["success", "pending", "failed", "initiated"],
-            default: "pending",
+            // enum: ["success", "pending", "failed", "initiated"],
+            default: "initiated",
         },
         transactionDetails: {
             type: Object,

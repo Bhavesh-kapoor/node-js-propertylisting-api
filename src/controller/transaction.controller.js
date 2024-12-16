@@ -8,26 +8,27 @@ import { generateTransactionId } from "../utils/helper.js";
 
 /*----------------------------------------------create transaction------------------------------------------*/
 
-const createTransaction = asyncHandler(async (req, res) => {
-    const { userId, transactionId, subscriptionPlanId, amount, paymentMethod, status } = req.body;
+// const createTransaction = asyncHandler(async (req, res) => {
+//     const { userId, transactionId, subscriptionPlanId, amount, paymentMethod, status,duration } = req.body;
 
-    const existingTransaction = await Transaction.findOne({ transactionId });
-    if (existingTransaction) {
-        return res.status(400).json(new ApiResponse(400, null, "Transaction with this ID already exists!"));
-    }
+//     const existingTransaction = await Transaction.findOne({ transactionId });
+//     if (existingTransaction) {
+//         return res.status(400).json(new ApiResponse(400, null, "Transaction with this ID already exists!"));
+//     }
 
-    const transaction = new Transaction({
-        userId,
-        transactionId,
-        subscriptionPlanId,
-        amount,
-        paymentMethod,
-        status,
-    });
+//     const transaction = new Transaction({
+//         userId,
+//         transactionId,
+//         subscriptionPlanId,
+//         amount,
+//         paymentMethod,
+//         status,
+//         duration
+//     });
 
-    await transaction.save();
-    res.status(201).json(new ApiResponse(201, transaction, "Transaction created successfully!"));
-});
+//     await transaction.save();
+//     res.status(201).json(new ApiResponse(201, transaction, "Transaction created successfully!"));
+// });
 
 /*----------------------------------------------get all transactions------------------------------------------*/
 

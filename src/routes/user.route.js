@@ -17,7 +17,7 @@ router.get("/get-current-user", getCurrentUser);
 router.put("/update-user", updateAccountDetails);
 router.get("/logout", logoutUser);
 router.put("/change-current-password", changeCurrentPassword);
-router.get("/refresh-access-token", refreshAccessToken);
+router.post("/refresh-access-token", refreshAccessToken);
 router.post("/update-avatar", multerUpload.single("avatar"), changeAvatarImage);
 
 export default router;

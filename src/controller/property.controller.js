@@ -8,23 +8,29 @@ import { check, validationResult } from "express-validator";
 const s3Service = new s3ServiceWithProgress();
 
 const propertyValidator = [
-    check("title").notEmpty().withMessage("title is required!"),
-    check("description").notEmpty().withMessage("description is required!"),
-    check("price").notEmpty().withMessage("price is required!"),
-    check("propertyType").notEmpty().withMessage("propertyType is required!"),
-    check("status").notEmpty().withMessage("status is required!"),
-    check("features").notEmpty().withMessage("features is required!"),
-]
+    check("title").notEmpty().withMessage("Title is required!"),
+    check("description").notEmpty().withMessage("Description is required!"),
+    check("price").isNumeric().withMessage("Price must be a number!"),
+    check("propertyType").isIn(["House", "Apartment", "Condo", "Villa", "Land"]).withMessage("Invalid property type!"),
+    check("status").optional().isIn(["For Sale", "For Rent", "Sold", "Rented"]).withMessage("Invalid status!"),
+    check("address.fullAddress").notEmpty().withMessage("Full address is required!"),
+    check("address.city").notEmpty().withMessage("City is required!"),
+    check("address.state").notEmpty().withMessage("State is required!"),
+    check("address.pinCode").notEmpty().withMessage("Postal code is required!"),
+    check("address.country").notEmpty().withMessage("Country is required!"),
+    check("specifications.landArea").isNumeric().withMessage("Land area must be a number!"),
+];
 
-/*---------------------------------------------------add a new property----------------------------------------*/
+/*---------------------------------------------------Add a new property----------------------------------------*/
 const createProperty = asyncHandler(async (req, res) => {
-    console.log(req.body)
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return res.status(400).json(new ApiError(400, "Validation Error", errors));
+        return res.status(400).json(new ApiError(400, "Validation Error", errors.array()));
     }
-    const { title, description, address, price, propertyType, status, features, specifications } = req.body;
+
+    const { title, description, address, price, propertyType, status, amenities, specifications, videoUrl } = req.body;
     const user = req.user;
+
     const propertyData = {
         title,
         description,
@@ -32,110 +38,146 @@ const createProperty = asyncHandler(async (req, res) => {
         price,
         propertyType,
         status,
-        features,
+        amenities,
         specifications,
+        videoUrl,
         owner: user._id,
     };
 
-    if (req.files && req.files.length > 0) {
-        const imageUploads = await Promise.all(req.files.map(async (file) => {
-            const uploadResult = await s3Service.uploadFile(file, `properties/${Date.now()}_${file.originalname}`);
-            return uploadResult.url
-        }));
+    if (req.files && req.files['imagefiles'] && req.files['imagefiles'].length > 0) {
+        const imageUploads = await Promise.all(
+            req.files['imagefiles'].map(async (file) => {
+                const uploadResult = await s3Service.uploadFile(file, `properties/${Date.now()}_${file.originalname}`);
+                return uploadResult.url;
+            })
+        );
         propertyData.images = imageUploads;
     }
+
+    // Handle single video upload (if any)
+    if (req.files && req.files['videofiles'] && req.files['videofiles'].length > 0) {
+        const videoFile = req.files['videofiles'][0]; // Only one video
+        const uploadResult = await s3Service.uploadFile(videoFile, `properties/videos/${Date.now()}_${videoFile.originalname}`);
+        propertyData.video = uploadResult.url;
+    }
+
+    // Create and save property
     const property = new Property(propertyData);
     await property.save();
 
     res.status(201).json(new ApiResponse(201, property, "Property created successfully"));
-})
-/*-------------------------------------------------get property list----------------------------------------*/
-const getProperties = async (req, res) => {
-    try {
-        const {
-            city,
-            country,
-            name,
-            propertyType,
-            minPrice,
-            maxPrice,
-            status,
-            page = 1,
-            limit = 10,
-            sortBy = 'createdAt',
-            sortOrder = 'desc'
-        } = req.query;
+});
 
-        const pageNumber = parseInt(page, 10);
-        const limitNumber = parseInt(limit, 10);
-        const skip = (pageNumber - 1) * limitNumber;
-        const filter = {};
-        if (city) {
-            filter['address.city'] = { $regex: city, $options: 'i' };
-        }
-        if (country) {
-            filter['address.country'] = { $regex: country, $options: 'i' };
-        }
-        if (name) {
-            filter.title = { $regex: name, $options: 'i' };
-        }
-        if (propertyType) {
-            filter.propertyType = propertyType;
-        }
-        if (minPrice || maxPrice) {
-            filter.price = {};
-            if (minPrice) filter.price.$gte = Number(minPrice);
-            if (maxPrice) filter.price.$lte = Number(maxPrice);
-        }
-        if (status) {
-            filter.status = status;
-        }
-        const sortOptions = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
 
-        const properties = await Property.find(filter)
-            .populate({
-                path: 'owner',
-                select: 'name email isVerified',
-            })
-            .sort({ 'owner.isVerified': -1, ...sortOptions })
-            .skip(skip)
-            .limit(limitNumber);
+/*-------------------------------------------------Get property list----------------------------------------*/
+const getProperties = asyncHandler(async (req, res) => {
+    const {
+        city,
+        country,
+        name,
+        propertyType,
+        minPrice,
+        maxPrice,
+        status,
+        amenities,
+        page = 1,
+        limit = 10,
+        sortBy = "createdAt",
+        sortOrder = "desc",
+    } = req.query;
 
-        const totalCount = await Property.countDocuments(filter);
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * limitNumber;
 
-        res.status(200).json(new ApiResponse(200, {
+    const filter = {};
+
+    // Filter by city
+    if (city) {
+        filter["address.city"] = { $regex: city, $options: "i" };
+    }
+
+    // Filter by country
+    if (country) {
+        filter["address.country"] = { $regex: country, $options: "i" };
+    }
+
+    // Filter by name
+    if (name) {
+        filter.title = { $regex: name, $options: "i" };
+    }
+
+    // Filter by property type
+    if (propertyType) {
+        filter.propertyType = propertyType;
+    }
+
+    // Filter by price range
+    if (minPrice || maxPrice) {
+        filter.price = {};
+        if (minPrice) filter.price.$gte = Number(minPrice);
+        if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+
+    // Filter by status
+    if (status) {
+        filter.status = status;
+    }
+
+    // Filter by amenities (matches all specified amenities)
+    if (amenities) {
+        const amenitiesArray = amenities.split(",").map((item) => item.trim());
+        filter.amenities = { $all: amenitiesArray };
+    }
+
+    // Sorting options
+    const sortOptions = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
+
+    // Fetch filtered properties
+    const properties = await Property.find(filter)
+        .populate({
+            path: "owner",
+            select: "name email isVerified",
+        })
+        .sort({ "owner.isVerified": -1, ...sortOptions })
+        .skip(skip)
+        .limit(limitNumber);
+
+    // Count total properties
+    const totalCount = await Property.countDocuments(filter);
+
+    // Respond with data and pagination
+    res.status(200).json(
+        new ApiResponse(200, {
             result: properties,
             pagination: {
-              totalPages: Math.ceil(totalCount / limitNumber),
-              currentPage: pageNumber,
-              totalItems: totalCount,
-              itemsPerPage: limitNumber,
+                totalPages: Math.ceil(totalCount / limitNumber),
+                currentPage: pageNumber,
+                totalItems: totalCount,
+                itemsPerPage: limitNumber,
             },
-          }, "properties fatched successfully."));
-    } catch (error) {
-        console.error("Error fetching properties:", error);
-        res.status(500).json({ message: "Server Error" });
-    }
-};
+        }, "Properties fetched successfully.")
+    );
+});
 
-
+/*--------------------------------------------Get a single property----------------------------------------*/
 const getProperty = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const property = await Property.findById(id).populate("owner");
+
+    const property = await Property.findById(id).populate("owner", "name email");
 
     if (!property) {
-        throw new ApiError(404, 'Property not found found!')
+        throw new ApiError(404, "Property not found");
     }
 
-    res.status(200).json(property);
-})
+    res.status(200).json(new ApiResponse(200, property, "Property fetched successfully."));
+});
 
-/*------------------------------------------------- Update Property----------------------------------------*/
 const updateProperty = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const {
         title, description, address, price,
-        propertyType, status, features, specifications, owner, images
+        propertyType, status, features, specifications, owner, images, videoUrl
     } = req.body;
 
     const property = await Property.findById(id);
@@ -169,13 +211,14 @@ const updateProperty = asyncHandler(async (req, res) => {
 
     // Handle new image uploads
     let newImageUrls = [];
-    if (req.files && req.files.length > 0) {
-        const imageUploads = await Promise.all(req.files.map(async (file) => {
+    if (req.files && req.files['imagefiles'] && req.files['imagefiles'].length > 0) {
+        const imageUploads = await Promise.all(req.files['imagefiles'].map(async (file) => {
             const uploadResult = await s3Service.uploadFile(file, `properties/${Date.now()}_${file.originalname}`);
             return uploadResult.url;
         }));
         newImageUrls = imageUploads; // Store uploaded image URLs
     }
+
     const existingImageUrls = property.images || [];
     let updatedImages = existingImageUrls;
 
@@ -201,26 +244,49 @@ const updateProperty = asyncHandler(async (req, res) => {
         ];
     }
     property.images = updatedImages;
+
+    // Handle video upload (if any)
+    if (req.files && req.files['videofiles'] && req.files['videofiles'].length > 0) {
+        const videoFile = req.files['videofiles'][0]; // Only one video
+        const uploadResult = await s3Service.uploadFile(videoFile, `properties/videos/${Date.now()}_${videoFile.originalname}`);
+        property.video = uploadResult.url; // Save video URL
+    } else if (videoUrl) {
+        // If videoUrl is provided in the body, update video with the new URL
+        property.video = videoUrl;
+    }
+
     await property.save();
 
     res.status(200).json(new ApiResponse(200, property, "Property updated successfully"));
 });
 
+
 /*-------------------------------------------------- Delete Property--------------------------------*/
 const deleteProperty = asyncHandler(async (req, res) => {
-
     const { id } = req.params;
     const property = await Property.findById(id);
 
     if (!property) {
-        throw new ApiError(404, "Property not found")
+        throw new ApiError(404, "Property not found");
     }
 
+    // Delete images if any
     if (property.images && property.images.length > 0) {
         await Promise.all(property.images.map(imageUrl => s3Service.deleteFile(imageUrl)));
     }
-    await Property.findByIdAndDelete(id);
-    res.status(200).json(new ApiResponse(200, null, "Property deleted successfully"))
-})
 
-export { createProperty, getProperties, getProperty, updateProperty, deleteProperty, propertyValidator }
+    // Delete video if exists
+    if (property.video) {
+        await s3Service.deleteFile(property.video);
+    }
+
+    // Delete the property from the database
+    await Property.findByIdAndDelete(id);
+
+    res.status(200).json(new ApiResponse(200, null, "Property deleted successfully"));
+});
+
+
+
+
+export { createProperty, getProperties, updateProperty, getProperty, propertyValidator,deleteProperty };

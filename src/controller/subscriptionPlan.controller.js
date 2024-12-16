@@ -6,8 +6,28 @@ import ApiError from "../utils/ApiError.js";
 const createSubscriptionPlan = asyncHandler(async (req, res) => {
     const { name, title, description, price, maxProperties } = req.body;
 
-    if (!price || !price.Monthly || !price.Quarterly || !price.Yearly) {
-        return res.status(400).json(new ApiResponse(400, null, "All price fields (Monthly, Quarterly, Yearly) are required."));
+    if (!price) {
+        return res
+            .status(400)
+            .json(new ApiResponse(400, null, "Price object is required."));
+    }
+
+    if (price.Monthly === undefined || price.Monthly === null || price.Monthly < 0) {
+        return res
+            .status(400)
+            .json(new ApiResponse(400, null, "Monthly price is required and must be 0 or greater."));
+    }
+
+    if (price.Quarterly === undefined || price.Quarterly === null || price.Quarterly < 0) {
+        return res
+            .status(400)
+            .json(new ApiResponse(400, null, "Quarterly price is required and must be 0 or greater."));
+    }
+
+    if (price.Yearly === undefined || price.Yearly === null || price.Yearly < 0) {
+        return res
+            .status(400)
+            .json(new ApiResponse(400, null, "Yearly price is required and must be 0 or greater."));
     }
     const existingPlan = await SubscriptionPlan.findOne({ name, title });
     if (existingPlan) {

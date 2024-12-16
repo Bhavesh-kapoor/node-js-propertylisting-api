@@ -9,6 +9,7 @@ import { uid } from 'uid';
 import { razorpay } from "../config/razorPayConfig.js";
 import { validateWebhookSignature } from "razorpay/dist/utils/razorpay-utils.js";
 /*-----------------------------------------create order-----------------------------------------*/
+
 const createOrder = asyncHandler(async (req, res) => {
     const { subscriptionId, currency = 'INR', duration } = req.body;
     const user = req.user;

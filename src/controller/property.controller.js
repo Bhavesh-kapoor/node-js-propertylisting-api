@@ -4,6 +4,8 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiError.js";
 import { check, validationResult } from "express-validator";
+import { SubscribedPlan } from "../model/subscribedPlan.model.js";
+import { addYears } from 'date-fns';
 
 const s3Service = new s3ServiceWithProgress();
 
@@ -43,6 +45,22 @@ const createProperty = asyncHandler(async (req, res) => {
         videoUrl,
         owner: user._id,
     };
+    const currentDate = new Date();
+
+    const activeSubscription = await SubscribedPlan.findOne({
+        userId: user._id,
+        startDate: { $lte: currentDate },
+        endDate: { $gte: currentDate }
+    })
+    const existingProperty = await SubscribedPlan.find({ owner: user._id });
+    if (existingProperty.length === 0 && !activeSubscription) {
+        const newSubscribedPlan = await SubscribedPlan.create({
+            user: req.user._id,
+            plan: transaction.subscription,
+            transaction: transaction._id,
+            endDate: addYears(new Date(), 30),
+        });
+    }
 
     if (req.files && req.files['imagefiles'] && req.files['imagefiles'].length > 0) {
         const imageUploads = await Promise.all(
@@ -286,7 +304,4 @@ const deleteProperty = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, null, "Property deleted successfully"));
 });
 
-
-
-
-export { createProperty, getProperties, updateProperty, getProperty, propertyValidator,deleteProperty };
+export { createProperty, getProperties, updateProperty, getProperty, propertyValidator, deleteProperty };

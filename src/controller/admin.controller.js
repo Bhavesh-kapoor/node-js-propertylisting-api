@@ -25,7 +25,7 @@ const registerUser = asyncHandler(async (req, res) => {
     return res.status(400).json(new ApiError(400, "Validation Error", errors));
   }
 
-  const { name, email, mobile, role, isEmailVerified, isMobileVerified, password, permissions } = req.body;
+  const { name, email, mobile, role = "dealer", isEmailVerified, isMobileVerified, password, permissions } = req.body;
 
   const query = {
     $or: [{ mobile }],
@@ -34,9 +34,6 @@ const registerUser = asyncHandler(async (req, res) => {
     query.$or.push({ email });
   }
   let isActive = true;
-  if (role === "photographer") {
-    isActive = false;
-  }
   const existedUser = await User.findOne(query);
   if (existedUser) {
     return res.status(200).json(new ApiResponse(200, null, "User already exists!"));
@@ -119,7 +116,7 @@ const loginAdmin = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(404, "User does not exist");
   }
-  if (user.role!== "admin") {
+  if (user.role !== "admin") {
     throw new ApiError(403, "UnAuthorized!");
   }
   const isPasswordValid = await user.isPasswordCorrect(password);

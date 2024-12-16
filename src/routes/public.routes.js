@@ -18,5 +18,8 @@ router.post('/verify-mobile-otp', verifyMobileOtp);
 router.post('/send-email-otp', sendOtpEmail);
 router.post('/verify-email-otp', verifyEmailOtp);
 
+/*----------------------------------------------------subscription plan list-----------------------------------------------*/
+import { getAllSubscriptionPlans } from '../controller/subscriptionPlan.controller.js';
+router.get('/get-subscription-plans', getAllSubscriptionPlans);
 
 export default router;

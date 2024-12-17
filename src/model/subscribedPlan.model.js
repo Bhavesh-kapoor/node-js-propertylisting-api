@@ -9,7 +9,6 @@ const SubscribedPlanSchema = new mongoose.Schema({
     transactionId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Transaction',
-        required: true
     },
     planId: {
         type: mongoose.Schema.Types.ObjectId,

@@ -8,15 +8,19 @@ import { SubscriptionPlan } from "../model/subscriptionPlan.model.js";
 
 const subscribeAPlan = asyncHandler(async (req, res) => {
     const { paymentDetails, transaction } = req;
+
+    console.log("paymentDetails", paymentDetails)
     transaction.transactionDetails = paymentDetails;
     transaction.status = paymentDetails.status;
     transaction.paymentMethod = paymentDetails.status;
+    console.log("transaction-----", transaction)
     transaction.save();
 
     if (paymentDetails.status !== "captured") {
         return res.status(402).json(new ApiResponse(402, paymentDetails, "Payment failed!"))
     }
     const subscriptionPlan = await SubscriptionPlan.getByID(transaction.subscription);
+    console.log("subscriptionPlan",subscriptionPlan)
     if (!subscriptionPlan) {
         throw new ApiError(404, "Subscription plan not found.");
     }
@@ -37,13 +41,14 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
             endDate = currentDate;
             break;
     }
-    
+
     const newSubscribedPlan = await SubscribedPlan.create({
         user: req.user._id,
         plan: transaction.subscription,
-        listingOffered:subscriptionPlan.maxProperties,
+        listingOffered: subscriptionPlan.maxProperties,
         transaction: transaction._id,
-        endDate: endDate
+        endDate: endDate,
+        startDate: startDate
     });
 
     res.status(201).json(new ApiResponse(201, newSubscribedPlan, "Subscription successful!"))

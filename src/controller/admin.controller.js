@@ -25,26 +25,38 @@ const userValidations = [
     .isBoolean().withMessage("isMobileVerified should be a boolean value (true or false)."),
 ];
 const registerUser = asyncHandler(async (req, res) => {
+  // Validate incoming request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json(new ApiError(400, "Validation Error", errors));
+    return res.status(400).json(new ApiError(400, "Validation Error", errors.array()));
   }
 
-  const { name, email, mobile, role = "dealer", isEmailVerified, isMobileVerified, password, permissions } = req.body;
+  // Extract fields from request body
+  const {
+    name,
+    email,
+    mobile,
+    role = "dealer",
+    isEmailVerified = false,
+    isMobileVerified = false,
+    password,
+    permissions,
+  } = req.body;
 
-  const query = {
-    $or: [{ mobile }],
-  };
-  if (email) {
-    query.$or.push({ email });
-  }
-  let isActive = true;
+  const query = { $or: [{ email }] };
+  if (mobile) query.$or.push({ mobile });
+
   const existedUser = await User.findOne(query);
   if (existedUser) {
-    return res.status(200).json(new ApiResponse(200, null, "User already exists!"));
+    return res
+      .status(200)
+      .json(new ApiResponse(200, null, "User already exists!"));
   }
+
+  // Handle file upload (avatar)
   let avatarUrl;
   if (req.file) {
+    console.log(req.file)
     const s3Path = `avatars/${Date.now()}_${req.file.originalname}`;
     const fileUrl = await s3Service.uploadFile(req.file, s3Path);
     avatarUrl = fileUrl.url;
@@ -59,51 +71,63 @@ const registerUser = asyncHandler(async (req, res) => {
     avatarUrl,
     isEmailVerified,
     isMobileVerified,
-    isActive,
+    isActive: true,
     password: password || null,
-    permissions
+    permissions,
   });
 
   const createdUser = await User.findById(user._id).select("-password -refreshToken");
-  console.log("User", createdUser)
+  console.log("createdUser", createdUser)
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registering the user");
   }
-  let newSubscribedPlan
+
+  // Assign free plan if the role is "dealer"
+  let subscribedPlan = {};
   if (createdUser.role === "dealer") {
     const freePlan = await SubscriptionPlan.findOne({
       $or: [
-        { 'price.Monthly': 0 },
-        { 'price.Quarterly': 0 },
-        { 'price.Yearly': 0 },
+        { "price.Monthly": 0 },
+        { "price.Quarterly": 0 },
+        { "price.Yearly": 0 },
       ],
     });
-    console.log("freePlan", freePlan)
-    const currentDate = new Date();
-    const endDate = addDays(currentDate, 3650);
-    newSubscribedPlan = await SubscribedPlan.create({
-      user: createdUser._id,
-      plan: freePlan._id,
-      listingOffered: freePlan.maxProperties,
-      transaction: null,
-      endDate: endDate
-    });
+
+    if (freePlan) {
+      const currentDate = new Date();
+      const endDate = addDays(currentDate, 3650);
+      console.log("check",createdUser._id, freePlan._id, freePlan.maxProperties,)
+      const newSubscribedPlan = await SubscribedPlan.create({
+        userId: createdUser._id,
+        planId: freePlan._id,
+        listingOffered: freePlan.maxProperties,
+        transactionId: null,
+        startDate: currentDate,
+        endDate: endDate,
+      });
+
+      subscribedPlan = newSubscribedPlan;
+    }
   }
+
   const { accessToken, refreshToken } = await createAccessOrRefreshToken(user._id);
   const options = {
     httpOnly: true,
     secure: true,
   };
+
   return res
     .status(201)
     .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, options)
-    .json(new ApiResponse(201, {
-      createdUser,
-      newSubscribedPlan,
-      accessToken,
-      refreshToken,
-    }, "User registered successfully"));
+    .json(
+      new ApiResponse(201, {
+        createdUser,
+        subscribedPlan,
+        accessToken,
+        refreshToken,
+      }, "User registered successfully")
+    );
 });
 
 
@@ -206,8 +230,6 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   if (isActive) updateFields.isActive = isActive;
 
   if (isEmailVerified !== undefined) updateFields.isEmailVerified = isEmailVerified;
-
-  // Address handling
   if (address) {
     // Destructure provided address fields
     const { street, city, state, country, pincode, landmark } = address;

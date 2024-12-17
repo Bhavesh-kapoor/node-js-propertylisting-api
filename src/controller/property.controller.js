@@ -57,17 +57,6 @@ const createProperty = asyncHandler(async (req, res) => {
     if (!activeSubscription) {
         return res.status(400).json(new ApiResponse(400, null, "No active subscription found! please upgrade the plan"));
     }
-    // const existingProperty = await SubscribedPlan.find({ owner: user._id });
-    // if(existingProperty.length >= activeSubscription. )
-
-    // if (existingProperty.length === 0 && !activeSubscription) {
-    //     const newSubscribedPlan = await SubscribedPlan.create({
-    //         user: req.user._id,
-    //         plan: transaction.subscription,
-    //         transaction: transaction._id,
-    //         endDate: addYears(new Date(), 30),
-    //     });
-    // }
     if (req.files && req.files['imagefiles'] && req.files['imagefiles'].length > 0) {
         const imageUploads = await Promise.all(
             req.files['imagefiles'].map(async (file) => {
@@ -79,8 +68,8 @@ const createProperty = asyncHandler(async (req, res) => {
     }
 
     // Handle single video upload (if any)
-    if (req.files && req.files['videofiles'] && req.files['videofiles'].length > 0) {
-        const videoFile = req.files['videofiles'][0]; // Only one video
+    if (req.files && req.files['videofile']) {
+        const videoFile = req.files['videofile']; // Access single video file directly
         const uploadResult = await s3Service.uploadFile(videoFile, `properties/videos/${Date.now()}_${videoFile.originalname}`);
         propertyData.video = uploadResult.url;
     }

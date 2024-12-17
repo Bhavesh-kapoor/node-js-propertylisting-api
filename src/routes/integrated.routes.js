@@ -33,4 +33,9 @@ integratedRoutes.use("/subscription", verifyJwtToken, subscriptionsPlanRoute);
 /*-----------------------------------------payment------------------------------------*/
 import paymentRoute from "./payment.routes.js";
 integratedRoutes.use("/payment", verifyJwtToken, paymentRoute);
+
+/*-----------------------------------------device id------------------------------------*/
+import deviceRouter from "./deviceId.routes.js";
+integratedRoutes.use("/device-id", deviceRouter);
+
 export default integratedRoutes;

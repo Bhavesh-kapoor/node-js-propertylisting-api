@@ -13,7 +13,7 @@ const propertyRouter = express.Router();
 
 const multiUpload = multerUpload.fields([
   { name: "imagefiles", maxCount: 10 },
-  { name: "videofiles", maxCount: 2 },
+  { name: "videofile", maxCount: 1 },
 ]);
 
 propertyRouter.post("/add", multiUpload, propertyValidator, createProperty);

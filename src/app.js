@@ -26,7 +26,6 @@ app.use(express.static(path.join(__dirname)));
 //   );
 //   next();
 // });
-
 // Middleware
 app.use(helmet());
 app.use(cookieParser());

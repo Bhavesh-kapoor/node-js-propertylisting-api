@@ -12,15 +12,15 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
     console.log("paymentDetails", paymentDetails)
     transaction.transactionDetails = paymentDetails;
     transaction.status = paymentDetails.status;
-    transaction.paymentMethod = paymentDetails.status;
+    transaction.paymentMethod = paymentDetails.method;
     console.log("transaction-----", transaction)
     transaction.save();
 
     if (paymentDetails.status !== "captured") {
         return res.status(402).json(new ApiResponse(402, paymentDetails, "Payment failed!"))
     }
-    const subscriptionPlan = await SubscriptionPlan.getByID(transaction.subscription);
-    console.log("subscriptionPlan",subscriptionPlan)
+    const subscriptionPlan = await SubscriptionPlan.findById(transaction.subscription);
+    console.log("subscriptionPlan", subscriptionPlan)
     if (!subscriptionPlan) {
         throw new ApiError(404, "Subscription plan not found.");
     }

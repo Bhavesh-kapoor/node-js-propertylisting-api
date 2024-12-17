@@ -37,9 +37,11 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
             endDate = currentDate;
             break;
     }
+    
     const newSubscribedPlan = await SubscribedPlan.create({
         user: req.user._id,
         plan: transaction.subscription,
+        listingOffered:subscriptionPlan.maxProperties,
         transaction: transaction._id,
         endDate: endDate
     });

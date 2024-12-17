@@ -20,10 +20,22 @@ const SubscribedPlanSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    listingOffered: {
+        type: Number,
+        default: 0
+    },
+    listed: {
+        type: Number,
+        default: 0
+    },
     endDate: {
         type: Date,
         required: true
     },
+    isActive: {
+        type: Boolean,
+        default: true
+    }
 }, { timestamps: true });
 
 export const SubscribedPlan = mongoose.model('SubscribedPlan', SubscribedPlanSchema);

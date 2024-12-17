@@ -1,25 +1,53 @@
-import express from 'express';
-import { multerUpload } from '../middlewere/multer.middlewere.js';
-import { registerUser, loginUser, userValidations, loginWithMobile, loginAdmin } from '../controller/admin.controller.js';
-import { sendOtpMobile, verifyMobileOtp, sendOtpEmail, verifyEmailOtp } from '../controller/otp.controller.js';
+import express from "express";
+import { multerUpload } from "../middlewere/multer.middlewere.js";
+import {
+  registerUser,
+  loginUser,
+  userValidations,
+  loginWithMobile,
+  loginAdmin,
+  deleteAdmin,
+  updateAdminDetails,
+  getAdminDetails,
+} from "../controller/admin.controller.js";
+import {
+  sendOtpMobile,
+  verifyMobileOtp,
+  sendOtpEmail,
+  verifyEmailOtp,
+} from "../controller/otp.controller.js";
 
 const router = express.Router();
 
 /*----------------------------------------user api----------------------------------------------------*/
-router.post('/signup', multerUpload.single('profileImage'), userValidations, registerUser);
-router.post('/login', loginUser);
-router.post('/admin-login', loginAdmin);
-router.post('/mobile-login', loginWithMobile);
+router.post(
+  "/signup",
+  multerUpload.single("profileImage"),
+  userValidations,
+  registerUser
+);
+router.post("/login", loginUser);
+router.post("/admin-login", loginAdmin);
+router.post("/mobile-login", loginWithMobile);
+router.delete("/delete/:_id", verifyJwtToken, deleteAdmin);
+router.put(
+  "/update/:id",
+  verifyJwtToken,
+  multerUpload.single("profileImage"),
+  updateAdminDetails
+);
+router.get("/get-admin-details/:id", verifyJwtToken, getAdminDetails);
 
 /*----------------------------------------------------otp-----------------------------------------------*/
 
-router.post('/send-mobile-otp', sendOtpMobile);
-router.post('/verify-mobile-otp', verifyMobileOtp);
-router.post('/send-email-otp', sendOtpEmail);
-router.post('/verify-email-otp', verifyEmailOtp);
+router.post("/send-mobile-otp", sendOtpMobile);
+router.post("/verify-mobile-otp", verifyMobileOtp);
+router.post("/send-email-otp", sendOtpEmail);
+router.post("/verify-email-otp", verifyEmailOtp);
 
 /*----------------------------------------------------subscription plan list-----------------------------------------------*/
-import { getAllSubscriptionPlans } from '../controller/subscriptionPlan.controller.js';
-router.get('/get-subscription-plans', getAllSubscriptionPlans);
+import { getAllSubscriptionPlans } from "../controller/subscriptionPlan.controller.js";
+import verifyJwtToken from "../middlewere/auth.middleware.js";
+router.get("/get-subscription-plans", getAllSubscriptionPlans);
 
 export default router;

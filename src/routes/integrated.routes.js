@@ -1,34 +1,36 @@
 import express from "express";
-import userRoutes from "./user.route.js"
-import publicRoutes from "./public.routes.js"
+import seoRoutes from "./seo.route.js";
+import userRoutes from "./user.route.js";
 import adminRoutes from "./admin.routes.js";
+import publicRoutes from "./public.routes.js";
 import verifyJwtToken from "../middlewere/auth.middleware.js";
 
 const integratedRoutes = express.Router();
-integratedRoutes.use("/users", verifyJwtToken, userRoutes)
-integratedRoutes.use("/public", publicRoutes)
-integratedRoutes.use("/public/admin", adminRoutes)
+integratedRoutes.use("/users", verifyJwtToken, userRoutes);
+integratedRoutes.use("/public", publicRoutes);
+integratedRoutes.use("/public/admin", adminRoutes);
+integratedRoutes.use("/admin/seo", verifyJwtToken, seoRoutes);
 
 /*-----------------------------------------reviews Category------------------------------------*/
 import reviewRouter from "./review.router.js";
-integratedRoutes.use("/reviews", verifyJwtToken, reviewRouter)
+integratedRoutes.use("/reviews", verifyJwtToken, reviewRouter);
 
 /*-----------------------------------------blog------------------------------------*/
-import blogRoutes from "./blogs.route.js"
-integratedRoutes.use("/blogs", verifyJwtToken, blogRoutes)
+import blogRoutes from "./blogs.route.js";
+integratedRoutes.use("/blogs", verifyJwtToken, blogRoutes);
 
 /*-----------------------------------------contact us------------------------------------*/
-import contactUsRoutes from "./contactUs.router.js"
-integratedRoutes.use("/contact-us", contactUsRoutes)
+import contactUsRoutes from "./contactUs.router.js";
+integratedRoutes.use("/contact-us", contactUsRoutes);
 
 /*-----------------------------------------property------------------------------------*/
 import propertyRouter from "./property.routes.js";
-integratedRoutes.use("/property", verifyJwtToken, propertyRouter)
+integratedRoutes.use("/property", verifyJwtToken, propertyRouter);
 
 /*-----------------------------------------subscription Plan------------------------------------*/
 import subscriptionsPlanRoute from "./subscriptionPlan.routes.js";
-integratedRoutes.use("/subscription", verifyJwtToken, subscriptionsPlanRoute)
+integratedRoutes.use("/subscription", verifyJwtToken, subscriptionsPlanRoute);
 /*-----------------------------------------payment------------------------------------*/
 import paymentRoute from "./payment.routes.js";
-integratedRoutes.use("/payment", verifyJwtToken, paymentRoute)
+integratedRoutes.use("/payment", verifyJwtToken, paymentRoute);
 export default integratedRoutes;

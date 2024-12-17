@@ -2,96 +2,102 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
-const addressSchema = new mongoose.Schema({
-  street: {
-    type: String,
-    trim: true
+const addressSchema = new mongoose.Schema(
+  {
+    street: {
+      type: String,
+      trim: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+      required: true,
+    },
+    state: {
+      type: String,
+      trim: true,
+      required: true,
+    },
+    country: {
+      type: String,
+      trim: true,
+      required: true,
+      default: "India",
+    },
+    pincode: {
+      type: String,
+      trim: true,
+      required: true,
+      match: [/^\d{6}$/, "Please enter a valid 6-digit pincode"],
+    },
+    landmark: {
+      type: String,
+      trim: true,
+    },
   },
-  city: {
-    type: String,
-    trim: true,
-    required: true
-  },
-  state: {
-    type: String,
-    trim: true,
-    required: true
-  },
-  country: {
-    type: String,
-    trim: true,
-    required: true,
-    default: "India"
-  },
-  pincode: {
-    type: String,
-    trim: true,
-    required: true,
-    match: [/^\d{6}$/, "Please enter a valid 6-digit pincode"]
-  },
-  landmark: {
-    type: String,
-    trim: true
-  }
-}, { _id: false });
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  avatarUrl: {
-    type: String,
-    trim: true,
-  },
-  mobile: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    match: /^\d{10}$/,
-  },
-  isMobileVerified: {
-    type: Boolean,
-    default: false,
-  },
-  email: {
-    type: String,
-    unique: true,
-    sparse: true,
-    trim: true,
-    match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  },
-  isEmailVerified: {
-    type: Boolean,
-    default: false,
-  },
-  refreshToken: { type: String },
-  role: {
-    type: String,
-    enum: ["admin", "dealer", "user"],
-    required: true,
-  },
-  permissions: { type: [String], default: [] },
-  address: addressSchema,
-  password: {
-    type: String,
-    minlength: 8,
-  },
-  isActive: { type: Boolean, default: true },
-  isVerified: {
-    type: Boolean,
-    default: false,
-    required: true,
-  }
-}, { timestamps: true });
+  { _id: false }
+);
 
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    avatarUrl: {
+      type: String,
+      trim: true,
+    },
+    mobile: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      match: /^\d{10}$/,
+    },
+    isMobileVerified: {
+      type: Boolean,
+      default: false,
+    },
+    email: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    refreshToken: { type: String },
+    role: {
+      type: String,
+      enum: ["admin", "dealer", "user"],
+      required: true,
+    },
+    permissions: { type: [String], default: [] },
+    address: addressSchema,
+    password: {
+      type: String,
+      minlength: 8,
+    },
+    isActive: { type: Boolean, default: true },
+    isVerified: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
   if (!this.password) {
-    const existingUser = await User.findById(this._id).select('password');
+    const existingUser = await User.findById(this._id).select("password");
     if (existingUser) {
       this.password = existingUser.password;
     }

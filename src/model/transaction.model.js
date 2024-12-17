@@ -30,7 +30,7 @@ const TransactionSchema = new Schema(
         },
         paymentMethod: {
             type: String,
-            enum: ["credit_card", "debit_card", "upi", "net_banking", "wallet", "other"],
+            // enum: ["credit_card", "debit_card", "upi", "net_banking", "wallet", "other"],
         },
         status: {
             type: String,

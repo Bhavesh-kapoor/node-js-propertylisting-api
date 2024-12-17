@@ -27,9 +27,10 @@ const userValidations = [
     .withMessage("isMobileVerified should be a boolean value (true or false)."),
 ];
 const registerUser = asyncHandler(async (req, res) => {
+  // Validate incoming request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json(new ApiError(400, "Validation Error", errors));
+    return res.status(400).json(new ApiError(400, "Validation Error", errors.array()));
   }
 
   const {
@@ -43,21 +44,20 @@ const registerUser = asyncHandler(async (req, res) => {
     permissions,
   } = req.body;
 
-  const query = {
-    $or: [{ mobile }],
-  };
-  if (email) {
-    query.$or.push({ email });
-  }
-  let isActive = true;
+  const query = { $or: [{ email }] };
+  if (mobile) query.$or.push({ mobile });
+
   const existedUser = await User.findOne(query);
   if (existedUser) {
     return res
       .status(200)
       .json(new ApiResponse(200, null, "User already exists!"));
   }
+
+  // Handle file upload (avatar)
   let avatarUrl;
   if (req.file) {
+    console.log(req.file)
     const s3Path = `avatars/${Date.now()}_${req.file.originalname}`;
     const fileUrl = await s3Service.uploadFile(req.file, s3Path);
     avatarUrl = fileUrl.url;
@@ -72,7 +72,7 @@ const registerUser = asyncHandler(async (req, res) => {
     avatarUrl,
     isEmailVerified,
     isMobileVerified,
-    isActive,
+    isActive: true,
     password: password || null,
     permissions,
   });
@@ -92,7 +92,6 @@ const registerUser = asyncHandler(async (req, res) => {
         { "price.Yearly": 0 },
       ],
     });
-    console.log("freePlan", freePlan);
     const currentDate = new Date();
     const endDate = addDays(currentDate, 3650);
     newSubscribedPlan = await SubscribedPlan.create({
@@ -110,6 +109,7 @@ const registerUser = asyncHandler(async (req, res) => {
     httpOnly: true,
     secure: true,
   };
+
   return res
     .status(201)
     .cookie("accessToken", accessToken, options)

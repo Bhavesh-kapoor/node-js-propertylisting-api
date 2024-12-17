@@ -34,7 +34,7 @@ const createOrder = asyncHandler(async (req, res) => {
     }
     const transaction = new Transaction({
         userId: user._id,
-        transactionId: transactionId,
+        transactionId: response.order_id,
         subscription: subscription._id,
         amount: subscription.price[duration],
         currency: currency,
@@ -68,13 +68,14 @@ const verifyOrder = asyncHandler(async (req, res, next) => {
             return res.status(400).json({ error: "Payment verification failed" });
         }
         const payment = await razorpay.payments.fetch(razorpay_payment_id);
-
+        console.log("payment", payment)
         const transaction = await Transaction.findOne({
             $or: [
                 { transactionId: razorpay_order_id },
                 { transactionId: razorpay_payment_id },
             ],
         });
+        console.log("transaction", transaction)
         transaction.transactionId = payment.id
         req.paymentDetails = payment;
         req.transaction = transaction

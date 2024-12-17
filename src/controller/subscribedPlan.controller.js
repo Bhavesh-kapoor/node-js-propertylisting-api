@@ -49,7 +49,6 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
         listingOffered: subscriptionPlan.maxProperties,
         transaction: transaction._id,
         endDate: endDate,
-        startDate: startDate
     });
 
     res.status(201).json(new ApiResponse(201, newSubscribedPlan, "Subscription successful!"))

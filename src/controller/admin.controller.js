@@ -92,7 +92,6 @@ const registerUser = asyncHandler(async (req, res) => {
         { "price.Yearly": 0 },
       ],
     });
-    console.log("freePlan", freePlan);
     const currentDate = new Date();
     const endDate = addDays(currentDate, 3650);
     newSubscribedPlan = await SubscribedPlan.create({

@@ -95,10 +95,10 @@ const registerUser = asyncHandler(async (req, res) => {
     const currentDate = new Date();
     const endDate = addDays(currentDate, 3650);
     newSubscribedPlan = await SubscribedPlan.create({
-      user: createdUser._id,
-      plan: freePlan._id,
+      userId: createdUser._id,
+      planId: freePlan._id,
       listingOffered: freePlan.maxProperties,
-      transaction: null,
+      transactionId: null,
       endDate: endDate,
     });
   }

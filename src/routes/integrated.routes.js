@@ -19,7 +19,7 @@ integratedRoutes.use("/blogs", verifyJwtToken, blogRoutes)
 
 /*-----------------------------------------contact us------------------------------------*/
 import contactUsRoutes from "./contactUs.router.js"
-integratedRoutes.use("/contac-us", contactUsRoutes)
+integratedRoutes.use("/contact-us", contactUsRoutes)
 
 /*-----------------------------------------property------------------------------------*/
 import propertyRouter from "./property.routes.js";

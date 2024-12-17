@@ -1,6 +1,7 @@
 import express from "express";
 import seoRoutes from "./seo.route.js";
 import userRoutes from "./user.route.js";
+import dealerRoutes from "./dealer.route.js";
 import adminRoutes from "./admin.routes.js";
 import publicRoutes from "./public.routes.js";
 import verifyJwtToken from "../middlewere/auth.middleware.js";
@@ -14,6 +15,9 @@ integratedRoutes.use("/admin/seo", verifyJwtToken, seoRoutes);
 /*-----------------------------------------reviews Category------------------------------------*/
 import reviewRouter from "./review.router.js";
 integratedRoutes.use("/reviews", verifyJwtToken, reviewRouter);
+
+/*-----------------------------------------reviews Category------------------------------------*/
+integratedRoutes.use("/admin/dealer", verifyJwtToken, dealerRoutes);
 
 /*-----------------------------------------blog------------------------------------*/
 import blogRoutes from "./blogs.route.js";

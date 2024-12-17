@@ -4,6 +4,7 @@ import userRoutes from "./user.route.js";
 import dealerRoutes from "./dealer.route.js";
 import adminRoutes from "./admin.routes.js";
 import publicRoutes from "./public.routes.js";
+import transactionRoutes from "./transaction.routes.js";
 import verifyJwtToken from "../middlewere/auth.middleware.js";
 
 const integratedRoutes = express.Router();
@@ -18,6 +19,7 @@ integratedRoutes.use("/reviews", verifyJwtToken, reviewRouter);
 
 /*-----------------------------------------reviews Category------------------------------------*/
 integratedRoutes.use("/admin/dealer", verifyJwtToken, dealerRoutes);
+integratedRoutes.use("/admin/transactions", verifyJwtToken, transactionRoutes);
 
 /*-----------------------------------------blog------------------------------------*/
 import blogRoutes from "./blogs.route.js";

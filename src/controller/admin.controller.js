@@ -43,7 +43,12 @@ const registerUser = asyncHandler(async (req, res) => {
   if (existedUser) {
     return res.status(200).json(new ApiResponse(200, null, "User already exists!"));
   }
-
+  let avatarUrl;
+  if (req.file) {
+    const s3Path = `avatars/${Date.now()}_${req.file.originalname}`;
+    const fileUrl = await s3Service.uploadFile(req.file, s3Path);
+    avatarUrl = fileUrl.url;
+  }
 
   // Create the new user
   const user = await User.create({
@@ -51,6 +56,7 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     mobile,
     role,
+    avatarUrl,
     isEmailVerified,
     isMobileVerified,
     isActive,
@@ -59,9 +65,11 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   const createdUser = await User.findById(user._id).select("-password -refreshToken");
+  console.log("User", createdUser)
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registering the user");
   }
+  let newSubscribedPlan
   if (createdUser.role === "dealer") {
     const freePlan = await SubscriptionPlan.findOne({
       $or: [
@@ -70,8 +78,10 @@ const registerUser = asyncHandler(async (req, res) => {
         { 'price.Yearly': 0 },
       ],
     });
+    console.log("freePlan", freePlan)
+    const currentDate = new Date();
     const endDate = addDays(currentDate, 3650);
-    const newSubscribedPlan = await SubscribedPlan.create({
+    newSubscribedPlan = await SubscribedPlan.create({
       user: createdUser._id,
       plan: freePlan._id,
       listingOffered: freePlan.maxProperties,
@@ -90,6 +100,7 @@ const registerUser = asyncHandler(async (req, res) => {
     .cookie("refreshToken", refreshToken, options)
     .json(new ApiResponse(201, {
       createdUser,
+      newSubscribedPlan,
       accessToken,
       refreshToken,
     }, "User registered successfully"));

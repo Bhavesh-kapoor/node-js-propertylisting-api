@@ -50,18 +50,24 @@ const createProperty = asyncHandler(async (req, res) => {
     const activeSubscription = await SubscribedPlan.findOne({
         userId: user._id,
         startDate: { $lte: currentDate },
-        endDate: { $gte: currentDate }
+        endDate: { $gte: currentDate },
+        isActive: true,
     })
-    const existingProperty = await SubscribedPlan.find({ owner: user._id });
-    if (existingProperty.length === 0 && !activeSubscription) {
-        const newSubscribedPlan = await SubscribedPlan.create({
-            user: req.user._id,
-            plan: transaction.subscription,
-            transaction: transaction._id,
-            endDate: addYears(new Date(), 30),
-        });
-    }
 
+    if (!activeSubscription) {
+        return res.status(400).json(new ApiResponse(400, null, "No active subscription found! please upgrade the plan"));
+    }
+    // const existingProperty = await SubscribedPlan.find({ owner: user._id });
+    // if(existingProperty.length >= activeSubscription. )
+
+    // if (existingProperty.length === 0 && !activeSubscription) {
+    //     const newSubscribedPlan = await SubscribedPlan.create({
+    //         user: req.user._id,
+    //         plan: transaction.subscription,
+    //         transaction: transaction._id,
+    //         endDate: addYears(new Date(), 30),
+    //     });
+    // }
     if (req.files && req.files['imagefiles'] && req.files['imagefiles'].length > 0) {
         const imageUploads = await Promise.all(
             req.files['imagefiles'].map(async (file) => {
@@ -82,7 +88,11 @@ const createProperty = asyncHandler(async (req, res) => {
     // Create and save property
     const property = new Property(propertyData);
     await property.save();
-
+    activeSubscription.listed += 1;
+    if (activeSubscription.listed === activeSubscription.listed) {
+        activeSubscription.isActive = false;
+    }
+    await activeSubscription.save();
     res.status(201).json(new ApiResponse(201, property, "Property created successfully"));
 });
 

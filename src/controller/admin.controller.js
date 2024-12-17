@@ -39,6 +39,7 @@ const registerUser = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, null, "User already exists!"));
   }
 
+
   // Create the new user
   const user = await User.create({
     name,
@@ -55,6 +56,9 @@ const registerUser = asyncHandler(async (req, res) => {
   const createdUser = await User.findById(user._id).select("-password -refreshToken");
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registering the user");
+  }
+  if (createdUser.role === "dealer") {
+
   }
   const { accessToken, refreshToken } = await createAccessOrRefreshToken(user._id);
   const options = {
@@ -306,33 +310,18 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 })
 
 const fetchUser = asyncHandler(async (req, res) => {
-  try {
-    const { type } = req.body;
-
-    if (!type) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Please provide a user type in the query parameter (e.g., ?type=admin).",
-      });
+  const { role } = req.query;
+  const filter = {}
+  if (role) {
+    if (!["admin", "dealer", "user"].includes(role)) {
+      throw new ApiError(400, "role is invalid!")
     }
-
-    if (!["admin", "dealer", "user"].includes(type)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid user type. Allowed values are 'admin', 'photographer', 'user'.`,
-      });
-    }
-    const users = await User.find({ role: type });
-    return res
-      .status(200)
-      .json(new ApiResponse(200, users, "User Fetch Successfully"));
-  } catch (error) {
-    console.log(error);
-    return res
-      .status(500)
-      .json(new ApiResponse(500, error, "Internal server error"));
+    filter.role = role;
   }
+  const users = await User.find(filter);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, users, "User Fetch Successfully"));
 });
 
 const loginWithMobile = asyncHandler(async (req, res) => {

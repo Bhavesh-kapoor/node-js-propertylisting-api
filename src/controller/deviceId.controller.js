@@ -14,7 +14,6 @@ const createOrUpdateDevice = asyncHandler(async (req, res) => {
       .json(ApiResponse(400, null, "Device ID is required!"));
   }
 
-  // Perform an upsert operation
   const device = await Device.findOneAndUpdate(
     { deviceId },
     {
@@ -32,53 +31,28 @@ const createOrUpdateDevice = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, device, "Device created/updated successfully!"));
 });
-/*----------------------------------------- Update an existing device------------------------------------*/
-
-
-// Get a device by deviceId
-export const getDeviceById = async (req, res) => {
-  const { deviceId } = req.params;
-
-  try {
-    const device = await Device.findOne({ deviceId });
-
-    if (!device) {
-      return res.status(404).json({ success: false, message: "Device not found" });
-    }
-
-    return res.status(200).json({ success: true, data: device });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
 
 // Add a property to favorites
-export const addFavoriteProperty = async (req, res) => {
-  const { deviceId } = req.params;
-  const { propertyId } = req.body;
+export const addFavoriteProperty =asyncHandler( async (req, res) => {
+  const {deviceId, propertyId } = req.body;
 
-  try {
     if (!mongoose.Types.ObjectId.isValid(propertyId)) {
       return res.status(400).json({ success: false, message: "Invalid property ID" });
     }
 
     const updatedDevice = await Device.findOneAndUpdate(
       { deviceId },
-      { $addToSet: { favorites: propertyId } }, // Prevent duplicate entries
+      { $addToSet: { favorites: propertyId } },
       { new: true }
     );
-
     if (!updatedDevice) {
       return res.status(404).json({ success: false, message: "Device not found" });
     }
-
     return res
       .status(200)
       .json({ success: true, data: updatedDevice, message: "Property added to favorites" });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
   }
-};
+)
 
 // Remove a property from favorites
 export const removeFavoriteProperty = async (req, res) => {

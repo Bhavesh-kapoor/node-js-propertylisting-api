@@ -34,7 +34,7 @@ const createOrder = asyncHandler(async (req, res) => {
     }
     const transaction = new Transaction({
         userId: user._id,
-        transactionId: transactionId,
+        transactionId: response.order_id,
         subscription: subscription._id,
         amount: subscription.price[duration],
         currency: currency,

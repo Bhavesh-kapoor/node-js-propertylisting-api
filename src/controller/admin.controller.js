@@ -6,6 +6,11 @@ import { createAccessOrRefreshToken } from "../utils/helper.js";
 import { check, validationResult } from "express-validator"
 import { verifyOTP } from "../utils/otp.js";
 import s3ServiceWithProgress from "../config/awsS3.config.js";
+import { getPipeline, paginationResult } from "../utils/helper.js";
+import { SubscriptionPlan } from "../model/subscriptionPlan.model.js";
+import { SubscribedPlan } from "../model/subscribedPlan.model.js";
+import { addDays } from "date-fns";
+
 
 const s3Service = new s3ServiceWithProgress();
 
@@ -58,7 +63,21 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Something went wrong while registering the user");
   }
   if (createdUser.role === "dealer") {
-
+    const freePlan = await SubscriptionPlan.findOne({
+      $or: [
+        { 'price.Monthly': 0 },
+        { 'price.Quarterly': 0 },
+        { 'price.Yearly': 0 },
+      ],
+    });
+    const endDate = addDays(currentDate, 3650);
+    const newSubscribedPlan = await SubscribedPlan.create({
+      user: createdUser._id,
+      plan: freePlan._id,
+      listingOffered: freePlan.maxProperties,
+      transaction: null,
+      endDate: endDate
+    });
   }
   const { accessToken, refreshToken } = await createAccessOrRefreshToken(user._id);
   const options = {
@@ -310,18 +329,47 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 })
 
 const fetchUser = asyncHandler(async (req, res) => {
-  const { role } = req.query;
-  const filter = {}
+  const { role, page = 1, limit = 10 } = req.query;
+  const { pipeline, matchStage, options } = getPipeline(req.query);
+
+  const pageNumber = parseInt(page, 10);
+  const limitNumber = parseInt(limit, 10);
   if (role) {
     if (!["admin", "dealer", "user"].includes(role)) {
       throw new ApiError(400, "role is invalid!")
     }
-    filter.role = role;
   }
-  const users = await User.find(filter);
+
+  pipeline.push({
+    $project: {
+      _id: 1,
+      email: 1,
+      role: 1,
+      mobile: 1,
+      createdAt: 1,
+      name: 1,
+      avatarUrl: 1,
+      isActive: 1
+    },
+  });
+
+  const users = await User.aggregate(pipeline, options);
+  const totalUsers = await User.countDocuments(
+    Object.keys(matchStage).length > 0 ? matchStage : {}
+  );
+  if (!users.length) {
+    return res.status(404).json(new ApiError(404, null, "No user found!"));
+  }
+
+  const response = paginationResult(
+    pageNumber,
+    limitNumber,
+    totalUsers,
+    users
+  );
   return res
     .status(200)
-    .json(new ApiResponse(200, users, "User Fetch Successfully"));
+    .json(new ApiResponse(200, response, "User Fetch Successfully"));
 });
 
 const loginWithMobile = asyncHandler(async (req, res) => {
@@ -387,30 +435,4 @@ const changeAvatarImage = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, user, 'Avatar image updated successfully'));
 });
 
-
-const createClient = asyncHandler(async (req, res) => {
-  try {
-    const [number] = req.body;
-
-    const photographer = await findOne(number);
-
-    if (!photographer) {
-      throw new ApiError(
-        404,
-        "User not found. Check the number you have entered"
-      );
-    }
-
-    const { id, phoneNumber } = photographer;
-
-    return res
-      .status(200)
-      .json(new ApiResponse(200, { id }, "Photographer found"));
-  } catch (error) {
-    console.log(error);
-    return res
-      .status(500)
-      .json(new ApiResponse(500, null, "Internal server error"));
-  }
-});
-export { registerUser, loginUser, getCurrentUser, loginWithMobile, logoutUser, refreshAccessToken, changeCurrentPassword, createClient, fetchUser, userValidations, updateAccountDetails, loginAdmin, changeAvatarImage };
+export { registerUser, loginUser, getCurrentUser, loginWithMobile, logoutUser, refreshAccessToken, changeCurrentPassword, fetchUser, userValidations, updateAccountDetails, loginAdmin, changeAvatarImage };

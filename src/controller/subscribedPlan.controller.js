@@ -3,6 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { SubscribedPlan } from "../model/subscribedPlan.model.js";
 import { SubscriptionPlan } from "../model/subscriptionPlan.model.js";
+import { addDays } from "date-fns";
 
 /*---------------------------------------------subscribe to an new plan------------------------------*/
 

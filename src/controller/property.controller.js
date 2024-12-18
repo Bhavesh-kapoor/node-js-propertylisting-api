@@ -236,6 +236,20 @@ const getProperty = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, property, "Property fetched successfully."));
 });
 
+const listedProperties = asyncHandler(async (req, res) => {
+  const user = req.user;
+
+  const properties = await Property.find({ owner: user._id });
+
+  if (!properties) {
+    throw new ApiError(404, "Properties not found");
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, properties, "Properties fetched successfully."));
+});
+
 const updateProperty = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const {
@@ -384,4 +398,5 @@ export {
   getProperty,
   propertyValidator,
   deleteProperty,
+  listedProperties,
 };

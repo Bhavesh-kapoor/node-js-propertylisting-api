@@ -2,7 +2,7 @@ import express from "express";
 import {
   createProperty,
   updateProperty,
-  getProperties,
+  listedProperties,
   getProperty,
   deleteProperty,
   propertyValidator,
@@ -25,7 +25,7 @@ propertyRouter.put(
   updateProperty
 );
 
-propertyRouter.get("/get-list", getProperties);
+propertyRouter.get("/listed-properties", listedProperties);
 
 propertyRouter.get("/get/:id", getProperty);
 

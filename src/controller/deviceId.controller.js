@@ -3,11 +3,13 @@ import mongoose from "mongoose";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiError.js";
+import { isValidObjectId } from "../utils/helper.js";
 
 /*---------------------------- Create a new device-----------------------------------*/
 const createOrUpdateDevice = asyncHandler(async (req, res) => {
   const { deviceId, platform, deviceType, screenResolution } = req.body;
-  const generatedDeviceId = deviceId || new mongoose.Types.ObjectId().toHexString();
+  const generatedDeviceId =
+    deviceId || new mongoose.Types.ObjectId().toHexString();
   if (!generatedDeviceId) {
     return res
       .status(400)
@@ -18,111 +20,115 @@ const createOrUpdateDevice = asyncHandler(async (req, res) => {
     { deviceId },
     {
       $set: {
-        deviceId:generatedDeviceId,
+        deviceId: generatedDeviceId,
         platform,
         deviceType,
         screenResolution,
         updatedAt: new Date(),
       },
     },
-    { upsert: true, new: true } 
+    { upsert: true, new: true }
   );
   return res
     .status(200)
     .json(new ApiResponse(200, device, "Device created/updated successfully!"));
 });
 
-// Add a property to favorites
-export const addFavoriteProperty =asyncHandler( async (req, res) => {
-  const {deviceId, propertyId } = req.body;
+/*---------------------------- Add a property to favorites-------------------------------*/
 
-    if (!mongoose.Types.ObjectId.isValid(propertyId)) {
-      return res.status(400).json({ success: false, message: "Invalid property ID" });
-    }
+const addFavoriteProperty = asyncHandler(async (req, res) => {
+  const { deviceId, propertyId } = req.body;
 
-    const updatedDevice = await Device.findOneAndUpdate(
-      { deviceId },
-      { $addToSet: { favorites: propertyId } },
-      { new: true }
-    );
-    if (!updatedDevice) {
-      return res.status(404).json({ success: false, message: "Device not found" });
-    }
-    return res
-      .status(200)
-      .json({ success: true, data: updatedDevice, message: "Property added to favorites" });
+  if (!isValidObjectId(propertyId)) {
+    throw new ApiError(400, "Invalid property ID");
   }
-)
 
-// Remove a property from favorites
-export const removeFavoriteProperty = async (req, res) => {
-  const { deviceId, propertyId } = req.params;
-
-  try {
-    if (!mongoose.Types.ObjectId.isValid(propertyId)) {
-      return res.status(400).json({ success: false, message: "Invalid property ID" });
-    }
-
-    const updatedDevice = await Device.findOneAndUpdate(
-      { deviceId },
-      { $pull: { favorites: propertyId } }, // Remove property from favorites
-      { new: true }
-    );
-
-    if (!updatedDevice) {
-      return res.status(404).json({ success: false, message: "Device not found" });
-    }
-
-    return res
-      .status(200)
-      .json({ success: true, data: updatedDevice, message: "Property removed from favorites" });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+  const updatedDevice = await Device.findOneAndUpdate(
+    { deviceId },
+    { $addToSet: { favorites: propertyId } },
+    { new: true }
+  );
+  if (!updatedDevice) {
+    throw new ApiError(404, "Device not found");
   }
-};
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedDevice, "Property added to favorites"));
+});
 
-// Clear all favorite properties
-export const clearFavoriteProperties = async (req, res) => {
+/*----------------------------- Remove a property from favorites------------------------------*/
+
+const removeFavoriteProperty = asyncHandler(async (req, res) => {
+  const { deviceId, propertyId } = req.body;
+  console.log();
+  if (!isValidObjectId(propertyId)) {
+    throw new ApiError(400, "Invalid property ID");
+  }
+
+  const updatedDevice = await Device.findOneAndUpdate(
+    { deviceId },
+    { $pull: { favorites: propertyId } }, // Remove property from favorites
+    { new: true }
+  );
+
+  if (!updatedDevice) {
+    throw new ApiError(404, "Device not found");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedDevice, "Property added to favorites"));
+});
+
+/*-----------------------------------Clear all favorite properties------------------------------*/
+const clearFavoriteProperties = asyncHandler(async (req, res) => {
+  const { deviceId } = req.params;
+  if (!isValidObjectId(propertyId)) {
+    throw new ApiError(400, "Invalid property ID");
+  }
+  const updatedDevice = await Device.findOneAndUpdate(
+    { deviceId },
+    { $set: { favorites: [] } }, // Clear all favorites
+    { new: true }
+  );
+
+  if (!updatedDevice) {
+    throw new ApiError(404, "Device not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedDevice, "Property added to favorites"));
+});
+
+/*------------------------------ Get favorite properties (populated)------------------------------*/
+const getFavoriteProperties = asyncHandler(async (req, res) => {
   const { deviceId } = req.params;
 
-  try {
-    const updatedDevice = await Device.findOneAndUpdate(
-      { deviceId },
-      { $set: { favorites: [] } }, // Clear all favorites
-      { new: true }
-    );
-
-    if (!updatedDevice) {
-      return res.status(404).json({ success: false, message: "Device not found" });
-    }
-
+  if (!deviceId) {
     return res
       .status(200)
-      .json({ success: true, data: updatedDevice, message: "All favorites cleared" });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+      .json(new ApiResponse(200, [], "Device ID is required or invalid!"));
   }
-};
+  const device = await Device.findOne({ deviceId }).populate("favorites");
 
-// Get favorite properties (populated)
-export const getFavoriteProperties = async (req, res) => {
-  const { deviceId } = req.params;
-
-  try {
-    const device = await Device.findOne({ deviceId }).populate("favorites");
-
-    if (!device) {
-      return res.status(404).json({ success: false, message: "Device not found" });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: device.favorites,
-      message: "Favorite properties retrieved successfully",
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+  if (!device) {
+    return res.status(200).json(new ApiResponse(200, [], "Device not found!"));
   }
-};
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        device.favorites,
+        "Favorite properties retrieved successfully"
+      )
+    );
+});
 
-export { createOrUpdateDevice }
+export {
+  createOrUpdateDevice,
+  addFavoriteProperty,
+  removeFavoriteProperty,
+  getFavoriteProperties,
+  clearFavoriteProperties,
+};

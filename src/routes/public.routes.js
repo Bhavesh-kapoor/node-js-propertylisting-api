@@ -16,6 +16,7 @@ import {
   sendOtpEmail,
   verifyEmailOtp,
 } from "../controller/otp.controller.js";
+import verifyJwtToken from "../middlewere/auth.middleware.js";
 
 const router = express.Router();
 
@@ -47,7 +48,9 @@ router.post("/verify-email-otp", verifyEmailOtp);
 
 /*----------------------------------------------------subscription plan list-----------------------------------------------*/
 import { getAllSubscriptionPlans } from "../controller/subscriptionPlan.controller.js";
-import verifyJwtToken from "../middlewere/auth.middleware.js";
 router.get("/get-subscription-plans", getAllSubscriptionPlans);
 
+/*---------------------------------------------------get property list-------------------------*/
+import { getProperties} from "../controller/property.controller.js"
+router.get("/get-properties", getProperties);
 export default router;

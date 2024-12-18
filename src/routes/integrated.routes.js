@@ -21,6 +21,7 @@ integratedRoutes.use("/reviews", verifyJwtToken, reviewRouter);
 integratedRoutes.use("/admin/dealer", verifyJwtToken, dealerRoutes);
 integratedRoutes.use("/admin/transactions", verifyJwtToken, transactionRoutes);
 
+
 /*-----------------------------------------blog------------------------------------*/
 import blogRoutes from "./blogs.route.js";
 integratedRoutes.use("/blogs", verifyJwtToken, blogRoutes);
@@ -44,4 +45,6 @@ integratedRoutes.use("/payment", verifyJwtToken, paymentRoute);
 import deviceRouter from "./deviceId.routes.js";
 integratedRoutes.use("/device-id", deviceRouter);
 
+import dashboardRoutes from "./dashboard.routes.js";
+integratedRoutes.use("/admin/dashboard", dashboardRoutes);
 export default integratedRoutes;

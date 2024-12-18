@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import slugify from "slugify";
-
 const BlogSchema = new mongoose.Schema(
   {
     title: {

@@ -14,7 +14,7 @@ const propertyValidator = [
     check("description").notEmpty().withMessage("Description is required!"),
     check("price").isNumeric().withMessage("Price must be a number!"),
     check("propertyType").isIn(["House", "Apartment", "Condo", "Villa", "Land"]).withMessage("Invalid property type!"),
-    check("status").optional().isIn(["For Sale", "For Rent", "Sold", "Rented"]).withMessage("Invalid status!"),
+    check("status").optional().isIn(["For-Sale", "For-Rent", "Sold", "Rented"]).withMessage("Invalid status!"),
     check("address.fullAddress").notEmpty().withMessage("Full address is required!"),
     check("address.city").notEmpty().withMessage("City is required!"),
     check("address.state").notEmpty().withMessage("State is required!"),

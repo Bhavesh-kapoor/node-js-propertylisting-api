@@ -117,7 +117,7 @@ const createProperty = asyncHandler(async (req, res) => {
   const property = new Property(propertyData);
   await property.save();
   activeSubscription.listed += 1;
-  if (activeSubscription.listed === activeSubscription.listed) {
+  if (activeSubscription.listed === activeSubscription.listingOffered) {
     activeSubscription.isActive = false;
   }
   await activeSubscription.save();

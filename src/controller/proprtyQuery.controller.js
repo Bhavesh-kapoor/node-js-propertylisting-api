@@ -50,8 +50,8 @@ const raisePropertyQuery = asyncHandler(async (req, res) => {
   );
   const subject = `New Property Query from ${senderName}`;
   if (process.env.NODE_ENV === "production") {
-    // await sendMail(property.owner.email, "New Property Query", htmlContent);
-    await sendMail("adarshsrivastav375@gmail.com", subject, htmlContent);
+    await sendMail(property.owner.email, subject, htmlContent);
+    // await sendMail("adarshsrivastav375@gmail.com", subject, htmlContent);
   }
 
   return res

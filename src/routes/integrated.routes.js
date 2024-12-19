@@ -47,8 +47,12 @@ integratedRoutes.use("/device-id", deviceRouter);
 import dashboardRoutes from "./dashboard.routes.js";
 integratedRoutes.use("/admin/dashboard", dashboardRoutes);
 
-/*-----------------------------------------dashboardRoutes------------------------------------*/
+/*-----------------------------------------propertyQuery Routes------------------------------------*/
 import propertyQueryRoutes from "./propertyQuery.routes.js";
-integratedRoutes.use("/proprty-query",verifyJwtToken, propertyQueryRoutes);
+integratedRoutes.use("/proprty-query", verifyJwtToken, propertyQueryRoutes);
+
+/*-----------------------------------------banner routes Routes------------------------------------*/
+import bannerRouter from "./banner.routes.js";
+integratedRoutes.use("/banner", verifyJwtToken, bannerRouter);
 
 export default integratedRoutes;

@@ -13,6 +13,7 @@ const raiseQuery = asyncHandler(async (req, res) => {
       .status(400)
       .json(new ApiError(400, "", "all fields are mandetory"));
   }
+  
   const raisedQuery = await ContactUS.create({
     query,
     senderName,

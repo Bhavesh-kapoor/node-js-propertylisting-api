@@ -53,5 +53,5 @@ router.get("/get-subscription-plans", getAllSubscriptionPlans);
 /*---------------------------------------------------get property list-------------------------*/
 import { getProperties,getProperty} from "../controller/property.controller.js"
 router.get("/get-properties", getProperties);
-router.get("/get-property", getProperty);
+router.get("/get-property/:id", getProperty);
 export default router;

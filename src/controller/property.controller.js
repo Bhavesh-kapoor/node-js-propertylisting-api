@@ -194,7 +194,7 @@ const getProperties = asyncHandler(async (req, res) => {
   const properties = await Property.find(filter)
     .populate({
       path: "owner",
-      select: "name email isVerified avatarUrl",
+      select: "name email isVerified avatarUrl mobile",
     })
     .sort({ "owner.isVerified": -1, ...sortOptions })
     .skip(skip)
@@ -225,7 +225,10 @@ const getProperties = asyncHandler(async (req, res) => {
 const getProperty = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const property = await Property.findById(id).populate("owner", "name email");
+  const property = await Property.findById(id).populate(
+    "owner",
+    "name email isVerified avatarUrl mobile"
+  );
 
   if (!property) {
     throw new ApiError(404, "Property not found");
@@ -391,6 +394,141 @@ const deleteProperty = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, null, "Property deleted successfully"));
 });
 
+const getSimilarProperties = asyncHandler(async (req, res) => {
+  const { propertyId } = req.params;
+  const { limit = 4 } = req.query;
+
+  // Find the reference property
+  const referenceProperty = await Property.findById(propertyId);
+  if (!referenceProperty) {
+    throw new ApiError(404, "Property not found");
+  }
+
+  // Base price range (±20% of the reference property's price)
+  const priceRange = {
+    min: referenceProperty.price * 0.8,
+    max: referenceProperty.price * 1.2,
+  };
+
+  // Base area range (±20% of the reference property's area)
+  const areaRange = {
+    min: referenceProperty.specifications.area * 0.8,
+    max: referenceProperty.specifications.area * 1.2,
+  };
+
+  // Try to find properties with primary matching criteria
+  let similarProperties = await Property.find({
+    _id: { $ne: propertyId }, // Exclude the reference property
+    "address.country": referenceProperty.address.country,
+    propertyType: referenceProperty.propertyType,
+    price: { $gte: priceRange.min, $lte: priceRange.max },
+    "specifications.area": { $gte: areaRange.min, $lte: areaRange.max },
+    "specifications.bedrooms": referenceProperty.specifications.bedrooms,
+    status: referenceProperty.status,
+  })
+    .populate("owner", "name email")
+    .limit(Number(limit));
+
+  // If not enough properties found, try with relaxed criteria (same city or country)
+  if (similarProperties.length < limit) {
+    const relaxedProperties = await Property.find({
+      _id: { $ne: propertyId },
+      $or: [
+        { "address.city": referenceProperty.address.city },
+        { "address.country": referenceProperty.address.country },
+      ],
+      propertyType: referenceProperty.propertyType,
+      status: referenceProperty.status,
+    })
+      .populate("owner", "name email")
+      .limit(Number(limit) - similarProperties.length);
+
+    // Filter out any duplicates and add to similar properties
+    const existingIds = new Set(similarProperties.map((p) => p._id.toString()));
+    relaxedProperties.forEach((property) => {
+      if (!existingIds.has(property._id.toString())) {
+        similarProperties.push(property);
+      }
+    });
+  }
+
+  // If still not enough properties, get properties just from the same country
+  if (similarProperties.length < limit) {
+    const countryProperties = await Property.find({
+      _id: { $ne: propertyId },
+      "address.country": referenceProperty.address.country,
+      _id: { $nin: similarProperties.map((p) => p._id) },
+    })
+      .populate("owner", "name email")
+      .limit(Number(limit) - similarProperties.length);
+
+    similarProperties = [...similarProperties, ...countryProperties];
+  }
+
+  // Calculate similarity score for each property (optional)
+  const propertiesWithScores = similarProperties.map((property) => {
+    const score = calculateSimilarityScore(referenceProperty, property);
+    return {
+      ...property.toObject(),
+      similarityScore: score,
+    };
+  });
+
+  // Sort by similarity score
+  propertiesWithScores.sort((a, b) => b.similarityScore - a.similarityScore);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        propertiesWithScores,
+        "Similar properties fetched successfully"
+      )
+    );
+});
+
+// Helper function to calculate similarity score
+const calculateSimilarityScore = (reference, property) => {
+  let score = 0;
+
+  // Location match
+  if (property.address.country === reference.address.country) score += 20;
+  if (property.address.city === reference.address.city) score += 30;
+
+  // Property type match
+  if (property.propertyType === reference.propertyType) score += 15;
+
+  // Price similarity (up to 15 points)
+  const priceDiff =
+    Math.abs(property.price - reference.price) / reference.price;
+  score += Math.max(0, 15 * (1 - priceDiff));
+
+  // Area similarity (up to 10 points)
+  const areaDiff =
+    Math.abs(property.specifications.area - reference.specifications.area) /
+    reference.specifications.area;
+  score += Math.max(0, 10 * (1 - areaDiff));
+
+  // Bedrooms match
+  if (property.specifications.bedrooms === reference.specifications.bedrooms) {
+    score += 5;
+  }
+
+  // Amenities similarity (up to 5 points)
+  const commonAmenities = property.amenities.filter((amenity) =>
+    reference.amenities.includes(amenity)
+  ).length;
+  const totalAmenities = new Set([
+    ...property.amenities,
+    ...reference.amenities,
+  ]).size;
+  if (totalAmenities > 0) {
+    score += 5 * (commonAmenities / totalAmenities);
+  }
+
+  return Math.round(score);
+};
 export {
   createProperty,
   getProperties,
@@ -399,4 +537,5 @@ export {
   propertyValidator,
   deleteProperty,
   listedProperties,
+  getSimilarProperties,
 };

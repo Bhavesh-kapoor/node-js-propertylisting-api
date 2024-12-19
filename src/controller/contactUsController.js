@@ -13,7 +13,7 @@ const raiseQuery = asyncHandler(async (req, res) => {
       .status(400)
       .json(new ApiError(400, "", "all fields are mandetory"));
   }
-  
+
   const raisedQuery = await ContactUS.create({
     query,
     senderName,
@@ -94,7 +94,7 @@ const getQueryList = asyncHandler(async (req, res) => {
   }
   return res
     .status(200)
-    .json(new ApiResponse(200, { result: queryList, pagination }));
+    .json(new ApiResponse(200, { result: queryList, pagination },"list fetched successfully"));
 });
 
 // API to get query by ID

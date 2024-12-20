@@ -6,9 +6,9 @@ const reviewSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    photographerId: {
+    propertyId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Photographer',
+        ref: 'Property',
         required: true,
         index: true
     },

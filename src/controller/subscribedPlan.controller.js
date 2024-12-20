@@ -15,7 +15,7 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
   transaction.status = paymentDetails.status;
   transaction.paymentMethod = paymentDetails.method;
   console.log("transaction-----", transaction);
-  transaction.save();
+  const savedTransaction = transaction.save();
 
   if (paymentDetails.status !== "captured") {
     return res
@@ -71,8 +71,8 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
     new ApiResponse(
       201,
       {
-        ...newSubscribedPlan,
-        addOn: existingPlan.listingOffered - existingPlan.listed,
+        subscriptionDetails: newSubscribedPlan,
+        transactionDetails:savedTransaction,
       },
       "Subscription successful!"
     )
@@ -162,6 +162,7 @@ const getSubscribedPlansByUserId = asyncHandler(async (req, res) => {
 
 /*---------------------------------Get current active subscription for user--------------------------*/
 const getCurrentSubscription = asyncHandler(async (req, res) => {
+  console.log(req.user);
   const user = req.user;
   let userId = user._id;
   if (user.role === "admin") {

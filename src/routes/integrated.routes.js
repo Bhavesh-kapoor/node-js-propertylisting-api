@@ -55,4 +55,7 @@ integratedRoutes.use("/property-query", verifyJwtToken, propertyQueryRoutes);
 import bannerRouter from "./banner.routes.js";
 integratedRoutes.use("/banner", verifyJwtToken, bannerRouter);
 
+/*-----------------------------------------subscribed plan routes------------------------------------*/
+import subscribedPlanRoute from "./subscribedPlan.routes.js";
+integratedRoutes.use("/subscribed-plan", verifyJwtToken, subscribedPlanRoute);
 export default integratedRoutes;

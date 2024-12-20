@@ -131,9 +131,50 @@ const deleteTransaction = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, null, "Transaction deleted successfully!"));
 });
+/*-------------------------------------------thank You-------------------------------------------*/
+
+const thankyou = asyncHandler(async (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id } = req.body;
+
+  const transaction = await Transaction.aggregate([
+    {
+      $match: {
+        $and: [
+          {
+            $or: [
+              { transactionId: razorpay_order_id },
+              { transactionId: razorpay_payment_id },
+            ],
+          },
+          { status: "captured" },
+        ],
+      },
+    },
+    {
+      $project: {
+        transactionId: 1,
+        createdAt: 1,
+        start_time: 1,
+        status: 1,
+      },
+    },
+  ]);
+
+  if (transaction.length === 0) {
+    return res
+      .status(404)
+      .json(new ApiResponse(404, [], "No transactions found for this user"));
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, transaction, "Transactions retrieved successfully.")
+  );
+});
+
 export {
   getTransactions,
   getTransactionById,
   updateTransaction,
   deleteTransaction,
+  thankyou
 };

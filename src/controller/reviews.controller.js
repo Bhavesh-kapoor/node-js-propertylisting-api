@@ -5,194 +5,198 @@ import ApiResponse from '../utils/ApiResponse.js';
 import s3ServiceWithProgress from '../config/awsS3.config.js';
 import mongoose from 'mongoose';
 
+// Initialize S3 service once
 const s3Service = new s3ServiceWithProgress();
 
-/*------------------------------------------------Create a Review---------------------------------------------*/
+// Validation utilities
+const validatePagination = (page, limit) => ({
+    pageNumber: Math.max(1, parseInt(page) || 1),
+    limitNumber: Math.min(100, Math.max(1, parseInt(limit) || 10))
+});
+
+const validateId = (id, fieldName = 'ID') => {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new ApiError(400, `Invalid ${fieldName} format`);
+    }
+    return true;
+};
 
 const createReview = asyncHandler(async (req, res) => {
-    const { photographerId, stars, comment } = req.body;
+    const { propertyId, stars, comment } = req.body;
     const userId = req.user._id;
-    let imageUrl;
 
-    if (!userId || !photographerId || !stars) {
-        throw new ApiError(400, "Required fields: stars, comment");
+    // Validate required fields in one go
+    if (!userId || !propertyId || !stars || stars < 1 || stars > 5) {
+        throw new ApiError(400, "Invalid input: Ensure propertyId and stars (1-5) are provided");
     }
 
-    if (req.file) {
-        const s3Path = `review_image_${Date.now()}_${req.file.originalname}`;
-        const fileUrl = await s3Service.uploadFile(req.file, s3Path);
-        imageUrl = fileUrl.url;
-    }
+    // Handle image upload if present
+    const imageUrl = req.file 
+        ? (await s3Service.uploadFile(
+            req.file, 
+            `review_image_${Date.now()}_${req.file.originalname}`
+          )).url 
+        : null;
 
-    const review = new Review({
+    // Create and save review in one operation
+    const savedReview = await Review.create({
         userId,
-        photographerId,
+        propertyId,
         stars,
         comment,
         imageUrl
     });
 
-    const savedReview = await review.save();
     res.status(201).json(new ApiResponse(201, savedReview, "Review created successfully"));
 });
 
-/*--------------------------------------------------Get All Reviews----------------------------------*/
-const getReviewsByPhotographer = asyncHandler(async (req, res) => {
-    const { photographerId } = req.params;
+const getReviewsByProperty = asyncHandler(async (req, res) => {
+    const { propertyId } = req.params;
     const { page = 1, limit = 10 } = req.query;
-    const pageNumber = parseInt(page);
-    const limitNumber = parseInt(limit);
-    const skip = (pageNumber - 1) * limitNumber;
-    if (!photographerId) {
-        throw new ApiError(400, "Photographer ID is required");
-    }
+    
+    validateId(propertyId, 'Property ID');
+    const { pageNumber, limitNumber } = validatePagination(page, limit);
 
     const pipeline = [
+        { $match: { propertyId: new mongoose.Types.ObjectId(propertyId) } },
         {
-            $match: { photographerId: new mongoose.Types.ObjectId(photographerId) }
-        },
-
-        {
-            $sort: { createdAt: -1 }
-        },
-        {
-            $lookup: {
-                from: 'users',
-                localField: 'userId',
-                foreignField: '_id',
-                as: 'userDetails'
-            }
-        },
-        {
-            $unwind: {
-                path: '$userDetails',
-                preserveNullAndEmptyArrays: true
-            }
-        },
-        {
-            $group: {
-                _id: '$photographerId',
-                totalReviews: { $sum: 1 },
-                averageStars: { $avg: '$stars' },
-                reviews: { $push: '$$ROOT' }
-            }
-        },
-        {
-            $project: {
-                averageStars: { $round: ['$averageStars', 2] },
-                totalReviews: 1,
-                reviews: {
-                    $slice: ['$reviews', skip, limitNumber]
-                }
+            $facet: {
+                metadata: [
+                    { $group: {
+                        _id: null,
+                        totalReviews: { $sum: 1 },
+                        averageStars: { $avg: '$stars' }
+                    }}
+                ],
+                reviews: [
+                    { $sort: { createdAt: -1 } },
+                    { $skip: (pageNumber - 1) * limitNumber },
+                    { $limit: limitNumber },
+                    {
+                        $lookup: {
+                            from: 'users',
+                            let: { userId: '$userId' },
+                            pipeline: [
+                                { $match: { $expr: { $eq: ['$_id', '$$userId'] } } },
+                                { $project: { name: 1, _id: 0 } }
+                            ],
+                            as: 'userDetails'
+                        }
+                    }
+                ]
             }
         }
     ];
 
-    // Execute aggregation
-    const result = await Review.aggregate(pipeline);
-
-    if (!result || result.length === 0) {
-        throw new ApiError(404, "No reviews found for this photographer");
+    const [result] = await Review.aggregate(pipeline);
+    
+    if (!result.metadata.length) {
+        throw new ApiError(404, "No reviews found for this property");
     }
 
-    const reviews = result[0].reviews.map(review => ({
-        reviewId: review._id,
-        userName: review.userDetails?.name || "Anonymous",
-        photographerId: review.photographerId,
-        stars: review.stars,
-        image: review.image,
-        reviewText: review.reviewText,
-        createdAt: review.createdAt,
-        updatedAt: review.updatedAt
-    }));
-
     res.status(200).json(new ApiResponse(200, {
-        reviews,
+        reviews: result.reviews.map(review => ({
+            reviewId: review._id,
+            userName: review.userDetails[0]?.name || "Anonymous",
+            propertyId: review.propertyId,
+            stars: review.stars,
+            imageUrl: review.imageUrl,
+            comment: review.comment,
+            createdAt: review.createdAt,
+            updatedAt: review.updatedAt
+        })),
         pagination: {
             currentPage: pageNumber,
-            totalPages: Math.ceil(result[0].totalReviews / limitNumber),
-            totalItems: result[0].totalReviews,
+            totalPages: Math.ceil(result.metadata[0].totalReviews / limitNumber),
+            totalItems: result.metadata[0].totalReviews,
             itemsPerPage: limitNumber,
         },
-        averageStars: result[0].averageStars,
+        averageStars: Number(result.metadata[0].averageStars.toFixed(2))
     }, "Reviews fetched successfully"));
 });
-
 
 const editReview = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { stars, comment } = req.body;
-    let imageUrl;
+    
+    validateId(id, 'Review ID');
 
-    const review = await Review.findById(id);
+    // Find and update in one operation
+    const review = await Review.findOneAndUpdate(
+        { _id: id },
+        {
+            $set: {
+                ...(stars && { stars }),
+                ...(comment && { comment })
+            }
+        },
+        { new: true, runValidators: true }
+    );
+
     if (!review) {
         throw new ApiError(404, "Review not found");
     }
 
-    if (stars) review.stars = stars;
-    if (comment) review.comment = comment;
-
+    // Handle image update if present
     if (req.file) {
-        const s3Path = `review_image_${Date.now()}_${req.file.originalname}`;
-        const fileUrl = await s3Service.uploadFile(req.file, s3Path);
-        imageUrl = fileUrl.url;
+        const newImageUrl = (await s3Service.uploadFile(
+            req.file,
+            `review_image_${Date.now()}_${req.file.originalname}`
+        )).url;
 
         if (review.imageUrl) {
-            await s3Service.deleteFile(review.imageUrl);
+            await s3Service.deleteFile(review.imageUrl).catch(console.error);
         }
 
-        review.imageUrl = imageUrl;
+        review.imageUrl = newImageUrl;
+        await review.save();
     }
 
-    const updatedReview = await review.save();
-    res.status(200).json(new ApiResponse(200, updatedReview, "Review updated successfully"));
+    res.status(200).json(new ApiResponse(200, review, "Review updated successfully"));
 });
 
 const deleteReview = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    
+    validateId(id, 'Review ID');
 
     const review = await Review.findById(id);
     if (!review) {
         throw new ApiError(404, "Review not found");
     }
 
-    if (review.imageUrl) {
-        try {
-            await s3Service.deleteFile(review.imageUrl);
-        } catch (err) {
-            throw new ApiError(500, "Error deleting associated image from S3");
-        }
-    }
+    // Delete image and review in parallel if image exists
+    await Promise.all([
+        Review.deleteOne({ _id: id }),
+        review.imageUrl ? s3Service.deleteFile(review.imageUrl).catch(console.error) : Promise.resolve()
+    ]);
 
-    await Review.findByIdAndDelete(id);
     res.status(200).json(new ApiResponse(200, null, "Review deleted successfully"));
 });
 
-
 const getReviewById = asyncHandler(async (req, res) => {
     const { reviewId } = req.params;
+    
+    validateId(reviewId, 'Review ID');
 
-    if (!reviewId) {
-        throw new ApiError(400, "Review ID is required");
-    }
-
-    const review = await Review.findById(reviewId).populate('userId', 'name');
+    const review = await Review.findById(reviewId)
+        .populate('userId', 'name')
+        .lean();
 
     if (!review) {
         throw new ApiError(404, "Review not found");
     }
 
-    const response = {
+    res.status(200).json(new ApiResponse(200, {
         reviewId: review._id,
         userName: review.userId?.name || "Anonymous",
-        photographerId: review.photographerId,
+        propertyId: review.propertyId,
         stars: review.stars,
-        image: review.image,
-        reviewText: review.reviewText,
+        imageUrl: review.imageUrl,
+        comment: review.comment,
         createdAt: review.createdAt,
         updatedAt: review.updatedAt
-    };
-
-    res.status(200).json(new ApiResponse(200, response, "Review fetched successfully"));
+    }, "Review fetched successfully"));
 });
-export { createReview, getReviewsByPhotographer, editReview, deleteReview,getReviewById }
+
+export { createReview, getReviewsByProperty, editReview, deleteReview, getReviewById };

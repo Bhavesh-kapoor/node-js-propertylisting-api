@@ -49,7 +49,7 @@ integratedRoutes.use("/admin/dashboard", dashboardRoutes);
 
 /*-----------------------------------------propertyQuery Routes------------------------------------*/
 import propertyQueryRoutes from "./propertyQuery.routes.js";
-integratedRoutes.use("/proprty-query", verifyJwtToken, propertyQueryRoutes);
+integratedRoutes.use("/property-query", verifyJwtToken, propertyQueryRoutes);
 
 /*-----------------------------------------banner routes Routes------------------------------------*/
 import bannerRouter from "./banner.routes.js";

@@ -53,7 +53,6 @@ const raisePropertyQuery = asyncHandler(async (req, res) => {
     await sendMail(property.owner.email, subject, htmlContent);
     // await sendMail("adarshsrivastav375@gmail.com", subject, htmlContent);
   }
-
   return res
     .status(201)
     .json(new ApiResponse(201, null, "Query raised successfully"));

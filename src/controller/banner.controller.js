@@ -2,12 +2,13 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { Banner } from "../model/banner.model.js";
+import { isValidObjectId } from "../utils/helper.js";
 
 const createBanner = asyncHandler(async (req, res) => {
   const { title, description, link, type } = req.body;
-  if (!req.file) {
-    throw new ApiError(400, "Banner image is required");
-  }
+  // if (!req.file) {
+  //   throw new ApiError(400, "Banner image is required");
+  // }
   // Validate required fields
   if (!title?.trim() || !description?.trim()) {
     throw new ApiError(400, "Title and description are required");
@@ -17,7 +18,7 @@ const createBanner = asyncHandler(async (req, res) => {
     title,
     type,
     description,
-    image: req.file.path,
+    image: req.file?.path,
     link: link?.trim(),
     isActive: true,
   });

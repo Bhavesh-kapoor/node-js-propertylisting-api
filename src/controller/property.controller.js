@@ -27,9 +27,7 @@ const propertyValidator = [
   check("address.state").notEmpty().withMessage("State is required!"),
   check("address.pinCode").notEmpty().withMessage("Postal code is required!"),
   check("address.country").notEmpty().withMessage("Country is required!"),
-  check("specifications.landArea")
-    .isNumeric()
-    .withMessage("Land area must be a number!"),
+  check("specifications.landArea").notEmpty().withMessage("landArea is required!")
 ];
 
 /*---------------------------------------------------Add a new property----------------------------------------*/

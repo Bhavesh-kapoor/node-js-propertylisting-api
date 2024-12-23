@@ -222,10 +222,84 @@ const getReviewById = asyncHandler(async (req, res) => {
   );
 });
 
+const getAllReviews = async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const pageNumber = parseInt(page, 10);
+  const limitNumber = parseInt(limit, 10);
+  const skip = (pageNumber - 1) * limitNumber;
+
+  try {
+    const feedbacks = await Review.aggregate([
+      {
+        $lookup: {
+          from: "properties",
+          localField: "propertyId",
+          foreignField: "_id",
+          as: "properties",
+        },
+      },
+      {
+        $unwind: {
+          path: "$properties",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          propertyName: "$properties.name",
+          propertyCountry: "$properties.address.country",
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          propertyId: 1,
+          stars: 1,
+          comment: 1,
+          imageUrl: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+      {
+        $sort: { updatedAt: -1 },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: limitNumber,
+      },
+    ]);
+
+    const totalFeedbacks = await Review.countDocuments();
+
+    return res.status(200).json(
+      new ApiResponse(
+        true,
+        {
+          result: feedbacks,
+          pagination: {
+            totalPages: Math.ceil(totalFeedbacks / limitNumber),
+            currentPage: pageNumber,
+            totalItems: totalFeedbacks,
+            itemsPerPage: limitNumber,
+          },
+        },
+        "feedback Fetched Successfully "
+      )
+    );
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
 export {
   createReview,
   getReviewsByProperty,
   editReview,
   deleteReview,
   getReviewById,
+  getAllReviews,
 };

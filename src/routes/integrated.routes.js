@@ -15,9 +15,9 @@ integratedRoutes.use("/admin/seo", verifyJwtToken, seoRoutes);
 
 /*-----------------------------------------reviews Category------------------------------------*/
 import reviewRouter from "./review.router.js";
-integratedRoutes.use("/reviews", verifyJwtToken, reviewRouter);
+integratedRoutes.use("/reviews", reviewRouter);
 
-/*-----------------------------------------reviews Category------------------------------------*/
+/*-----------------------------------------------------------------------------*/
 integratedRoutes.use("/admin/dealer", verifyJwtToken, dealerRoutes);
 integratedRoutes.use("/admin/transactions", verifyJwtToken, transactionRoutes);
 

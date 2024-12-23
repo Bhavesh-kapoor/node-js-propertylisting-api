@@ -1,10 +1,16 @@
 import mongoose from 'mongoose';
 
 const reviewSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+    name:{
+        type: String,
+        required: [true, 'Name is required'],
+        trim: true,
+    },
+    email:{
+        type: String,
+        required: [true, 'Email is required'],
+        trim: true,
+        lowercase: true,
     },
     propertyId: {
         type: mongoose.Schema.Types.ObjectId,

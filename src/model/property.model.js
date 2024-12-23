@@ -160,66 +160,58 @@ const propertySchema = new mongoose.Schema(
       bedrooms: {
         type: Number,
         required: [true, "Number of bedrooms is required"],
-        default: 0,
         min: 0,
       },
       bathrooms: {
         type: Number,
         required: [true, "Number of bathrooms is required"],
-        default: 0,
         min: 0,
       },
       area: {
         type: Number,
         required: [true, "Area is required"],
-        default: 0,
         min: 0,
       },
       landArea: {
         type: Number,
         required: [true, "Land area is required"],
-        default: 0,
         min: 0,
       },
       floors: {
         type: Number,
         min: 0,
-        default: 1,
       },
       parkingSpaces: {
         type: Number,
         min: 0,
-        default: 0,
       },
       yearBuilt: {
         type: Number,
       },
-      facingDirection: {
-        type: String,
-        enum: [
-          "North",
-          "South",
-          "East",
-          "West",
-          "North-East",
-          "North-West",
-          "South-East",
-          "South-West",
-        ],
-      },
-      furnishingStatus: {
-        type: String,
-        enum: ["Furnished", "Semi-Furnished", "Unfurnished"],
-        default: "Unfurnished",
-      },
+      //   facingDirection: {
+      //     type: String,
+      //     enum: [
+      //       "North",
+      //       "South",
+      //       "East",
+      //       "West",
+      //       "North-East",
+      //       "North-West",
+      //       "South-East",
+      //       "South-West",
+      //     ],
+      //   },
+      //   furnishingStatus: {
+      //     type: String,
+      //     enum: ["Furnished", "Semi-Furnished", "Unfurnished"],
+      //     default: "Unfurnished",
+      //   },
       powerBackup: {
         type: Boolean,
-        default: false,
       },
       waterSupply: {
         type: String,
         enum: ["Municipal", "Borewell", "Both"],
-        default: "Municipal",
       },
       flooringType: {
         type: String,
@@ -235,7 +227,6 @@ const propertySchema = new mongoose.Schema(
       },
       servantQuarters: {
         type: Boolean,
-        default: false,
       },
     },
     video: {

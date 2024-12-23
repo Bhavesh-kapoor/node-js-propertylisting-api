@@ -91,7 +91,9 @@ const getReviewsByProperty = asyncHandler(async (req, res) => {
   const [result] = await Review.aggregate(pipeline);
 
   if (!result.metadata.length) {
-    throw new ApiError(404, "No reviews found for this property");
+    return res
+      .status(200)
+      .json(new ApiResponse(200, [], "No reviews found for this property"));
   }
 
   res.status(200).json(

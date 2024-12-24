@@ -15,7 +15,7 @@ reviewRouter.post("/create", multerUpload.single("image"), createReview);
 reviewRouter.get("/get-by-property/:propertyId", getReviewsByProperty);
 reviewRouter.put("/edit/:id", multerUpload.single("image"), editReview);
 reviewRouter.delete("/delete/:id", deleteReview);
-reviewRouter.delete("/get-by-id/:id", getReviewById);
+reviewRouter.get("/get-by-id/:reviewId", getReviewById);
 reviewRouter.get("/get-all", getAllReviews);
 
 export default reviewRouter;

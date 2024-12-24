@@ -197,8 +197,6 @@ const getReviewById = asyncHandler(async (req, res) => {
   validateId(reviewId, "Review ID");
 
   const review = await Review.findById(reviewId)
-    .populate("userId", "name")
-    .lean();
 
   if (!review) {
     throw new ApiError(404, "Review not found");

@@ -21,7 +21,7 @@ const TransactionSchema = new Schema(
             type: String,
             enum:["Monthly","Quarterly","Yearly"]
         },
-        curruncy: {
+        currency: {
             type: String,
         },
         amount: {

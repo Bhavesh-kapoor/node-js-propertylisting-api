@@ -1,5 +1,5 @@
 import Razorpay from "razorpay";
-import asyncHandler from "../utils/asyncHandler.js";
+
 
 const razorpay = new Razorpay({
   key_id: process.env.CLIENT_ID,

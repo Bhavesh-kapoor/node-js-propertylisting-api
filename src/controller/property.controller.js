@@ -14,7 +14,7 @@ const propertyValidator = [
   check("description").notEmpty().withMessage("Description is required!"),
   check("price").isNumeric().withMessage("Price must be a number!"),
   check("propertyType")
-    .isIn(["House", "Apartment", "Condo", "Villa", "Land"])
+    .isIn(["House", "Apartment", "Condo", "Villa", "Land", "Commercial"])
     .withMessage("Invalid property type!"),
   check("status")
     .optional()
@@ -27,7 +27,9 @@ const propertyValidator = [
   check("address.state").notEmpty().withMessage("State is required!"),
   check("address.pinCode").notEmpty().withMessage("Postal code is required!"),
   check("address.country").notEmpty().withMessage("Country is required!"),
-  check("specifications.landArea").notEmpty().withMessage("landArea is required!")
+  check("specifications.landArea")
+    .notEmpty()
+    .withMessage("landArea is required!"),
 ];
 
 /*---------------------------------------------------Add a new property----------------------------------------*/

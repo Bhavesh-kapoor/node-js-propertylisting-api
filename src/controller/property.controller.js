@@ -183,10 +183,12 @@ const getProperties = asyncHandler(async (req, res) => {
 
   // Filter by amenities (matches all specified amenities)
   if (amenities) {
-    const amenitiesArray = amenities.split(",").map((item) => item.trim());
+    const amenitiesArray = amenities
+      .replace(/-/g, " ") // Replace all occurrences of '-' with a space
+      .split(",")
+      .map((item) => item.trim());
     filter.amenities = { $all: amenitiesArray };
   }
-
   // Sorting options
   const sortOptions = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
 
@@ -241,7 +243,7 @@ const getProperty = asyncHandler(async (req, res) => {
 const getPropertyBySlug = asyncHandler(async (req, res) => {
   const { slug } = req.params;
 
-  const property = await Property.findOne({slug}).populate(
+  const property = await Property.findOne({ slug }).populate(
     "owner",
     "name email isVerified avatarUrl mobile"
   );
@@ -367,7 +369,7 @@ const updateProperty = asyncHandler(async (req, res) => {
       videoFile,
       `properties/videos/${Date.now()}_${videoFile.originalname}`
     );
-    property.video = uploadResult.url; 
+    property.video = uploadResult.url;
   } else if (videoUrl) {
     property.video = videoUrl;
   }
@@ -552,5 +554,5 @@ export {
   deleteProperty,
   listedProperties,
   getSimilarProperties,
-  getPropertyBySlug
+  getPropertyBySlug,
 };

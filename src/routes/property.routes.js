@@ -6,6 +6,7 @@ import {
   getProperty,
   deleteProperty,
   propertyValidator,
+  getPropertyBySlug,
 } from "../controller/property.controller.js";
 import { multerUpload } from "../middlewere/multer.middlewere.js";
 
@@ -28,7 +29,7 @@ propertyRouter.put(
 propertyRouter.get("/listed-properties", listedProperties);
 
 propertyRouter.get("/get/:id", getProperty);
-
+propertyRouter.get("/get-by-slug/:slug", getPropertyBySlug);
 propertyRouter.delete("/delete-property/:id", deleteProperty);
 
 export default propertyRouter;

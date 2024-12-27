@@ -55,10 +55,12 @@ import {
   getProperties,
   getProperty,
   getSimilarProperties,
+  getPropertyBySlug,
 } from "../controller/property.controller.js";
 router.get("/get-properties", getProperties);
 router.get("/get-similar-properties/:propertyId", getSimilarProperties);
 router.get("/get-property/:id", getProperty);
+router.get("/get-by-slug/:slug", getPropertyBySlug);
 
 /*-------------------------------------property query---------------------------------------*/
 import { raisePropertyQuery } from "../controller/proprtyQuery.controller.js";

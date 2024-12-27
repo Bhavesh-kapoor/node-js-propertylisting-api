@@ -238,7 +238,22 @@ const getProperty = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, property, "Property fetched successfully."));
 });
+const getPropertyBySlug = asyncHandler(async (req, res) => {
+  const { slug } = req.params;
 
+  const property = await Property.findOne({slug}).populate(
+    "owner",
+    "name email isVerified avatarUrl mobile"
+  );
+
+  if (!property) {
+    throw new ApiError(404, "Property not found");
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, property, "Property fetched successfully."));
+});
 const listedProperties = asyncHandler(async (req, res) => {
   const user = req.user;
 
@@ -537,4 +552,5 @@ export {
   deleteProperty,
   listedProperties,
   getSimilarProperties,
+  getPropertyBySlug
 };

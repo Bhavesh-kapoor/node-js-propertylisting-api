@@ -10,7 +10,6 @@ import { addDays } from "date-fns";
 const subscribeAPlan = asyncHandler(async (req, res) => {
   const { paymentDetails, transaction } = req;
 
-  console.log("paymentDetails", paymentDetails);
   transaction.transactionDetails = paymentDetails;
   transaction.status = paymentDetails.status;
   transaction.paymentMethod = paymentDetails.method;

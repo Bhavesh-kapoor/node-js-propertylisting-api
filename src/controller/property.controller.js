@@ -352,9 +352,8 @@ const updateProperty = asyncHandler(async (req, res) => {
       videoFile,
       `properties/videos/${Date.now()}_${videoFile.originalname}`
     );
-    property.video = uploadResult.url; // Save video URL
+    property.video = uploadResult.url; 
   } else if (videoUrl) {
-    // If videoUrl is provided in the body, update video with the new URL
     property.video = videoUrl;
   }
 

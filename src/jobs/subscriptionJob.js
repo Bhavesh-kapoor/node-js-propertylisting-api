@@ -45,7 +45,7 @@ const updateSubscriptionStatuses = async () => {
   }
 };
 const scheduleCronJobs = () => {
-  cron.schedule("*/1 * * * *", async () => {
+  cron.schedule("0 0 * * *", async () => {
     logger.info("Running subscription status update cron job");
     await updateSubscriptionStatuses();
   });

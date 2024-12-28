@@ -181,7 +181,7 @@ const getProperties = asyncHandler(async (req, res) => {
     filter.status = status;
   }
 
-  // Filter by amenities (matches all specified amenities)
+  // Filter by amenities
   if (amenities) {
     const amenitiesArray = amenities
       .replace(/-/g, " ")
@@ -190,67 +190,84 @@ const getProperties = asyncHandler(async (req, res) => {
     filter.amenities = { $all: amenitiesArray };
   }
 
-  // Sorting options
-  const sortOptions = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
-
-  // First, get properties with owner details
-  const properties = await Property.find(filter)
-    .populate({
-      path: "owner",
-      select: "name email isVerified avatarUrl mobile",
-    })
-    .sort({ "owner.isVerified": -1, ...sortOptions })
-    .skip(skip)
-    .limit(limitNumber)
-    .lean(); // Using lean for better performance
+  // Use aggregation pipeline for better sorting control
+  const properties = await Property.aggregate([
+    { $match: filter },
+    {
+      $lookup: {
+        from: "users", // The users collection name
+        localField: "owner",
+        foreignField: "_id",
+        as: "ownerDetails"
+      }
+    },
+    { $unwind: "$ownerDetails" },
+    {
+      $addFields: {
+        "owner": {
+          "_id": "$ownerDetails._id",
+          "name": "$ownerDetails.name",
+          "email": "$ownerDetails.email",
+          "isVerified": "$ownerDetails.isVerified",
+          "avatarUrl": "$ownerDetails.avatarUrl",
+          "mobile": "$ownerDetails.mobile"
+        }
+      }
+    },
+    {
+      $sort: {
+        "ownerDetails.isVerified": -1, // Sort by verification status first
+        [sortBy]: sortOrder === "asc" ? 1 : -1 // Then by the requested sort field
+      }
+    },
+    { $skip: skip },
+    { $limit: limitNumber }
+  ]);
 
   // Get unique owner IDs
-  const ownerIds = [...new Set(properties.map((prop) => prop.owner._id))];
+  const ownerIds = [...new Set(properties.map(prop => prop.owner._id))];
 
-  // Fetch active subscriptions for all owners in one query
+  // Fetch active subscriptions
   const activeSubscriptions = await SubscribedPlan.find({
     userId: { $in: ownerIds },
     isActive: true,
-    endDate: { $gt: new Date() },
+    endDate: { $gt: new Date() }
   })
-    .populate({
-      path: "planId",
-      select: "title name",
-    })
-    .lean();
+  .populate({
+    path: "planId",
+    select: "title name"
+  })
+  .lean();
 
-  // Create a map of owner ID to subscription for O(1) lookup
+  // Create subscription map
   const subscriptionMap = new Map(
-    activeSubscriptions.map((sub) => [
+    activeSubscriptions.map(sub => [
       sub.userId.toString(),
       {
         title: sub.planId?.title || null,
         name: sub.planId?.name || null,
-        expiresAt: sub.endDate,
-      },
+        expiresAt: sub.endDate
+      }
     ])
   );
 
-  // Add subscription details to properties
-  const propertiesWithTags = properties.map((property) => {
-    const ownerSubscription = subscriptionMap.get(
-      property.owner._id.toString()
-    );
-
+  // Add subscription details
+  const propertiesWithTags = properties.map(property => {
+    const { ownerDetails, ...cleanedProperty } = property;
+    const ownerSubscription = subscriptionMap.get(property.owner._id.toString());
+  
     return {
-      ...property,
+      ...cleanedProperty,
       owner: {
         ...property.owner,
-        // subscription: ownerSubscription || null,
       },
-      tag: ownerSubscription?.title || null, // Add tag at root level for easy access
+      tag: ownerSubscription?.title || null,
     };
   });
 
   // Count total properties
   const totalCount = await Property.countDocuments(filter);
 
-  // Respond with data and pagination
   res.status(200).json(
     new ApiResponse(
       200,

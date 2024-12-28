@@ -184,15 +184,16 @@ const getProperties = asyncHandler(async (req, res) => {
   // Filter by amenities (matches all specified amenities)
   if (amenities) {
     const amenitiesArray = amenities
-      .replace(/-/g, " ") // Replace all occurrences of '-' with a space
+      .replace(/-/g, " ")
       .split(",")
       .map((item) => item.trim());
     filter.amenities = { $all: amenitiesArray };
   }
+
   // Sorting options
   const sortOptions = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
 
-  // Fetch filtered properties
+  // First, get properties with owner details
   const properties = await Property.find(filter)
     .populate({
       path: "owner",
@@ -200,8 +201,52 @@ const getProperties = asyncHandler(async (req, res) => {
     })
     .sort({ "owner.isVerified": -1, ...sortOptions })
     .skip(skip)
-    .limit(limitNumber);
-  console.log(properties);
+    .limit(limitNumber)
+    .lean(); // Using lean for better performance
+
+  // Get unique owner IDs
+  const ownerIds = [...new Set(properties.map((prop) => prop.owner._id))];
+
+  // Fetch active subscriptions for all owners in one query
+  const activeSubscriptions = await SubscribedPlan.find({
+    userId: { $in: ownerIds },
+    isActive: true,
+    endDate: { $gt: new Date() },
+  })
+    .populate({
+      path: "planId",
+      select: "title name",
+    })
+    .lean();
+
+  // Create a map of owner ID to subscription for O(1) lookup
+  const subscriptionMap = new Map(
+    activeSubscriptions.map((sub) => [
+      sub.userId.toString(),
+      {
+        title: sub.planId?.title || null,
+        name: sub.planId?.name || null,
+        expiresAt: sub.endDate,
+      },
+    ])
+  );
+
+  // Add subscription details to properties
+  const propertiesWithTags = properties.map((property) => {
+    const ownerSubscription = subscriptionMap.get(
+      property.owner._id.toString()
+    );
+
+    return {
+      ...property,
+      owner: {
+        ...property.owner,
+        // subscription: ownerSubscription || null,
+      },
+      tag: ownerSubscription?.title || null, // Add tag at root level for easy access
+    };
+  });
+
   // Count total properties
   const totalCount = await Property.countDocuments(filter);
 
@@ -210,7 +255,7 @@ const getProperties = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
-        result: properties,
+        result: propertiesWithTags,
         pagination: {
           totalPages: Math.ceil(totalCount / limitNumber),
           currentPage: pageNumber,
@@ -227,34 +272,97 @@ const getProperties = asyncHandler(async (req, res) => {
 const getProperty = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const property = await Property.findById(id).populate(
-    "owner",
-    "name email isVerified avatarUrl mobile"
-  );
+  // First get the property with owner details
+  const property = await Property.findById(id)
+    .populate("owner", "name email isVerified avatarUrl mobile")
+    .lean(); // Using lean() for better performance since we'll modify the object
 
   if (!property) {
     throw new ApiError(404, "Property not found");
   }
 
+  // Find the active subscription plan for the property owner
+  const activeSubscription = await SubscribedPlan.findOne({
+    userId: property.owner._id,
+    isActive: true,
+    endDate: { $gt: new Date() }, // Ensure subscription hasn't expired
+  }).populate({
+    path: "planId",
+    select: "title name", // Get plan title and name
+  });
+
+  // Add subscription details to the property object
+  const propertyWithSubscription = {
+    ...property,
+    owner: {
+      ...property.owner,
+      // subscription: activeSubscription
+      //   ? {
+      //       planTitle: activeSubscription.planId.title,
+      //       planName: activeSubscription.planId.name,
+      //       expiresAt: activeSubscription.endDate,
+      //     }
+      //   : null,
+    },
+  };
+
   res
     .status(200)
-    .json(new ApiResponse(200, property, "Property fetched successfully."));
+    .json(
+      new ApiResponse(
+        200,
+        propertyWithSubscription,
+        "Property fetched successfully."
+      )
+    );
 });
 const getPropertyBySlug = asyncHandler(async (req, res) => {
   const { slug } = req.params;
 
-  const property = await Property.findOne({ slug }).populate(
-    "owner",
-    "name email isVerified avatarUrl mobile"
-  );
+  // Get property with owner details
+  const property = await Property.findOne({ slug })
+    .populate("owner", "name email isVerified avatarUrl mobile")
+    .lean(); // Using lean() for better performance
 
   if (!property) {
     throw new ApiError(404, "Property not found");
   }
 
+  // Find active subscription for the property owner
+  const activeSubscription = await SubscribedPlan.findOne({
+    userId: property.owner._id,
+    isActive: true,
+    endDate: { $gt: new Date() }, // Ensure subscription hasn't expired
+  })
+    .populate({
+      path: "planId",
+      select: "title name",
+    })
+    .lean();
+
+  // Add subscription details to the property object
+  const propertyWithSubscription = {
+    ...property,
+    tag: activeSubscription?.planId?.title || null, // Add tag at root level
+    owner: {
+      ...property.owner,
+      // subscription: activeSubscription ? {
+      //   title: activeSubscription.planId.title,
+      //   name: activeSubscription.planId.name,
+      //   expiresAt: activeSubscription.endDate
+      // } : null
+    },
+  };
+
   res
     .status(200)
-    .json(new ApiResponse(200, property, "Property fetched successfully."));
+    .json(
+      new ApiResponse(
+        200,
+        propertyWithSubscription,
+        "Property fetched successfully."
+      )
+    );
 });
 const listedProperties = asyncHandler(async (req, res) => {
   const user = req.user;
@@ -415,26 +523,24 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
   const { limit = 4 } = req.query;
 
   // Find the reference property
-  const referenceProperty = await Property.findById(propertyId);
+  const referenceProperty = await Property.findById(propertyId).lean();
   if (!referenceProperty) {
     throw new ApiError(404, "Property not found");
   }
 
-  // Base price range (±20% of the reference property's price)
   const priceRange = {
     min: referenceProperty.price * 0.8,
     max: referenceProperty.price * 1.2,
   };
 
-  // Base area range (±20% of the reference property's area)
   const areaRange = {
     min: referenceProperty.specifications.area * 0.8,
     max: referenceProperty.specifications.area * 1.2,
   };
 
-  // Try to find properties with primary matching criteria
+  // Primary matching criteria
   let similarProperties = await Property.find({
-    _id: { $ne: propertyId }, // Exclude the reference property
+    _id: { $ne: propertyId },
     "address.country": referenceProperty.address.country,
     propertyType: referenceProperty.propertyType,
     price: { $gte: priceRange.min, $lte: priceRange.max },
@@ -442,10 +548,11 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
     "specifications.bedrooms": referenceProperty.specifications.bedrooms,
     status: referenceProperty.status,
   })
-    .populate("owner", "name email")
-    .limit(Number(limit));
+    .populate("owner", "name email isVerified avatarUrl mobile")
+    .limit(Number(limit))
+    .lean();
 
-  // If not enough properties found, try with relaxed criteria (same city or country)
+  // Relaxed criteria if needed
   if (similarProperties.length < limit) {
     const relaxedProperties = await Property.find({
       _id: { $ne: propertyId },
@@ -455,38 +562,72 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
       ],
       propertyType: referenceProperty.propertyType,
       status: referenceProperty.status,
+      _id: { $nin: similarProperties.map((p) => p._id) },
     })
-      .populate("owner", "name email")
-      .limit(Number(limit) - similarProperties.length);
+      .populate("owner", "name email isVerified avatarUrl mobile")
+      .limit(Number(limit) - similarProperties.length)
+      .lean();
 
-    // Filter out any duplicates and add to similar properties
-    const existingIds = new Set(similarProperties.map((p) => p._id.toString()));
-    relaxedProperties.forEach((property) => {
-      if (!existingIds.has(property._id.toString())) {
-        similarProperties.push(property);
-      }
-    });
+    similarProperties = [...similarProperties, ...relaxedProperties];
   }
 
-  // If still not enough properties, get properties just from the same country
+  // Final country-based fallback
   if (similarProperties.length < limit) {
     const countryProperties = await Property.find({
       _id: { $ne: propertyId },
       "address.country": referenceProperty.address.country,
       _id: { $nin: similarProperties.map((p) => p._id) },
     })
-      .populate("owner", "name email")
-      .limit(Number(limit) - similarProperties.length);
+      .populate("owner", "name email isVerified avatarUrl mobile")
+      .limit(Number(limit) - similarProperties.length)
+      .lean();
 
     similarProperties = [...similarProperties, ...countryProperties];
   }
 
-  // Calculate similarity score for each property (optional)
+  // Get all unique owner IDs
+  const ownerIds = [
+    ...new Set(similarProperties.map((prop) => prop.owner._id)),
+  ];
+
+  // Fetch active subscriptions for all owners in one query
+  const activeSubscriptions = await SubscribedPlan.find({
+    userId: { $in: ownerIds },
+    isActive: true,
+    endDate: { $gt: new Date() },
+  })
+    .populate({
+      path: "planId",
+      select: "title name",
+    })
+    .lean();
+
+  // Create subscription map for O(1) lookup
+  const subscriptionMap = new Map(
+    activeSubscriptions.map((sub) => [
+      sub.userId.toString(),
+      {
+        title: sub.planId?.title || null,
+        name: sub.planId?.name || null,
+        expiresAt: sub.endDate,
+      },
+    ])
+  );
+
+  // Add similarity scores and subscription details
   const propertiesWithScores = similarProperties.map((property) => {
-    const score = calculateSimilarityScore(referenceProperty, property);
+    const ownerSubscription = subscriptionMap.get(
+      property.owner._id.toString()
+    );
+
     return {
-      ...property.toObject(),
-      similarityScore: score,
+      ...property,
+      similarityScore: calculateSimilarityScore(referenceProperty, property),
+      tag: ownerSubscription?.title || null,
+      owner: {
+        ...property.owner,
+        // subscription: ownerSubscription || null,
+      },
     };
   });
 

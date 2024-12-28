@@ -9,7 +9,7 @@ import { addDays } from "date-fns";
 
 const subscribeAPlan = asyncHandler(async (req, res) => {
   const { paymentDetails, transaction } = req;
-
+  const user = req.user;
   transaction.transactionDetails = paymentDetails;
   transaction.status = paymentDetails.status;
   transaction.paymentMethod = paymentDetails.method;
@@ -45,7 +45,7 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
       break;
   }
   const existingPlan = await SubscribedPlan.findOne({
-    userId: req.user._id,
+    userId: user._id,
     startDate: { $lte: currentDate },
     endDate: { $gte: currentDate },
     isActive: true,
@@ -59,19 +59,20 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
   await existingPlan.save();
 
   const newSubscribedPlan = await SubscribedPlan.create({
-    userId: req.user._id,
+    userId: user._id,
     planId: transaction.subscription,
     listingOffered: listingOffered,
     transactionId: transaction._id,
     endDate: endDate,
   });
-
+  user.isVerified = true;
+  await user.save();
   res.status(201).json(
     new ApiResponse(
       201,
       {
         subscriptionDetails: newSubscribedPlan,
-        transactionDetails:savedTransaction,
+        transactionDetails: savedTransaction,
       },
       "Subscription successful!"
     )

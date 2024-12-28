@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import { logger } from "./config/logger.js";
 import path from 'path'
 import { fileURLToPath } from 'url';
+import scheduleCronJobs from "./jobs/subscriptionJob.js";
 
 
 dotenv.config();
@@ -63,6 +64,9 @@ app.use((req, res, next) => {
 /*----------------------------------------------Routes------------------------------------------*/
 import integratedRoutes from "./routes/integrated.routes.js";
 app.use("/api", integratedRoutes);
+
+/*----------------------------------------------cronjob------------------------------------------*/
+scheduleCronJobs()
 
 app.use((request, response) => {
     response.status(404).json({ success: false, message: "Route Not Found" });

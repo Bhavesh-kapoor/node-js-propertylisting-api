@@ -82,13 +82,14 @@ import { addDays } from "date-fns";
 
 const subscribeAPlan = asyncHandler(async (req, res) => {
   const { planId } = req.params;
+  const { duration } = req.body;
   const user = req.user;
   const subscriptionPlan = await SubscriptionPlan.findById(planId);
   if (!subscriptionPlan) {
     throw new ApiError(404, "Subscription plan not found.");
   }
 
-  const alreadySubscribed = SubscribedPlan.findOne({
+  const alreadySubscribed = await SubscribedPlan.findOne({
     userId: user._id,
     planId: planId,
     status: { $in: ["pending", "active"] },
@@ -101,7 +102,7 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
   }
   let endDate;
   const currentDate = new Date();
-  switch (transaction.duration) {
+  switch (duration) {
     case "Monthly":
       endDate = addDays(currentDate, 28); // Add 28 days for monthly
       break;

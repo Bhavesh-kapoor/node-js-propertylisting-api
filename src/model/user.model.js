@@ -56,11 +56,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: /^\d{10}$/,
     },
-    countryCode:{
+    countryCode: {
       type: String,
       required: true,
       trim: true,
-      default: "+91"
+      default: "+91",
     },
     isMobileVerified: {
       type: Boolean,
@@ -80,7 +80,7 @@ const userSchema = new mongoose.Schema(
     refreshToken: { type: String },
     role: {
       type: String,
-      enum: ["admin", "dealer", "agent","builder"],
+      enum: ["admin", "dealer", "agent", "builder"],
       required: true,
     },
     permissions: { type: [String], default: [] },
@@ -89,7 +89,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       minlength: 8,
     },
-    isActive: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: false },
     isVerified: {
       type: Boolean,
       default: false,

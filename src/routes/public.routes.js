@@ -68,7 +68,7 @@ router.post("/raise-property-query", raisePropertyQuery);
 
 /*-------------------------------------blog---------------------------------------*/
 import { findBlogById, getAllBlogs } from "../controller/BlogsController.js";
-
 router.get("/all-blogs", getAllBlogs);
 router.get("/get-blog/:_id", findBlogById);
+
 export default router;

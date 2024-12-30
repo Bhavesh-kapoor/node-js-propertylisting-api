@@ -130,6 +130,7 @@ const createProperty = asyncHandler(async (req, res) => {
 const getProperties = asyncHandler(async (req, res) => {
   const {
     city,
+    state,
     country,
     name,
     propertyType,
@@ -137,6 +138,7 @@ const getProperties = asyncHandler(async (req, res) => {
     maxPrice,
     status,
     amenities,
+    recommended,
     page = 1,
     limit = 10,
     sortBy = "createdAt",
@@ -152,6 +154,11 @@ const getProperties = asyncHandler(async (req, res) => {
   // Filter by city
   if (city) {
     filter["address.city"] = { $regex: city, $options: "i" };
+  }
+
+  // Filter by state
+  if (state) {
+    filter["address.state"] = { $regex: state, $options: "i" };
   }
 
   // Filter by country
@@ -198,64 +205,69 @@ const getProperties = asyncHandler(async (req, res) => {
         from: "users", // The users collection name
         localField: "owner",
         foreignField: "_id",
-        as: "ownerDetails"
-      }
+        as: "ownerDetails",
+      },
     },
     { $unwind: "$ownerDetails" },
     {
       $addFields: {
-        "owner": {
-          "_id": "$ownerDetails._id",
-          "name": "$ownerDetails.name",
-          "email": "$ownerDetails.email",
-          "isVerified": "$ownerDetails.isVerified",
-          "avatarUrl": "$ownerDetails.avatarUrl",
-          "mobile": "$ownerDetails.mobile"
-        }
-      }
+        owner: {
+          _id: "$ownerDetails._id",
+          name: "$ownerDetails.name",
+          email: "$ownerDetails.email",
+          isVerified: "$ownerDetails.isVerified",
+          avatarUrl: "$ownerDetails.avatarUrl",
+          mobile: "$ownerDetails.mobile",
+        },
+      },
     },
     {
       $sort: {
         "ownerDetails.isVerified": -1, // Sort by verification status first
-        [sortBy]: sortOrder === "asc" ? 1 : -1 // Then by the requested sort field
-      }
+        [sortBy]: sortOrder === "asc" ? 1 : -1, // Then by the requested sort field
+      },
     },
     { $skip: skip },
-    { $limit: limitNumber }
+    { $limit: limitNumber },
   ]);
 
+  // Filter properties for recommended flag
+  const filteredProperties = recommended === "true"
+    ? properties.filter((property) => property.owner.isVerified)
+    : properties;
+
   // Get unique owner IDs
-  const ownerIds = [...new Set(properties.map(prop => prop.owner._id))];
+  const ownerIds = [...new Set(filteredProperties.map((prop) => prop.owner._id))];
 
   // Fetch active subscriptions
   const activeSubscriptions = await SubscribedPlan.find({
     userId: { $in: ownerIds },
     isActive: true,
-    endDate: { $gt: new Date() }
+    endDate: { $gt: new Date() },
   })
-  .populate({
-    path: "planId",
-    select: "title name"
-  })
-  .lean();
+    .populate({
+      path: "planId",
+      select: "title name",
+    })
+    .lean();
 
   // Create subscription map
   const subscriptionMap = new Map(
-    activeSubscriptions.map(sub => [
+    activeSubscriptions.map((sub) => [
       sub.userId.toString(),
       {
         title: sub.planId?.title || null,
         name: sub.planId?.name || null,
-        expiresAt: sub.endDate
-      }
+        expiresAt: sub.endDate,
+      },
     ])
   );
 
   // Add subscription details
-  const propertiesWithTags = properties.map(property => {
+  const propertiesWithTags = filteredProperties.map((property) => {
     const { ownerDetails, ...cleanedProperty } = property;
     const ownerSubscription = subscriptionMap.get(property.owner._id.toString());
-  
+
     return {
       ...cleanedProperty,
       owner: {
@@ -284,6 +296,7 @@ const getProperties = asyncHandler(async (req, res) => {
     )
   );
 });
+
 
 /*--------------------------------------------Get a single property----------------------------------------*/
 const getProperty = asyncHandler(async (req, res) => {

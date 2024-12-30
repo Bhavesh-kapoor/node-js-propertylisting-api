@@ -87,11 +87,13 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
   if (!subscriptionPlan) {
     throw new ApiError(404, "Subscription plan not found.");
   }
+
   const alreadySubscribed = SubscribedPlan.findOne({
     userId: user._id,
     planId: planId,
     status: { $in: ["pending", "active"] },
   });
+  console.log("alreadySubscribed",alreadySubscribed)
   if (alreadySubscribed) {
     return res
       .status(200)
@@ -240,7 +242,7 @@ const getSubscribedPlansByUserId = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 }); // Get latest subscriptions first
 
   if (!subscribedPlans?.length) {
-    throw new ApiError(404, "No subscribed plans found for this user");
+    return res.status(200).json(new ApiResponse(200,{},"No subscribed plans found for this user"));
   }
 
   return res

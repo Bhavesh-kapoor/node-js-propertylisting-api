@@ -30,7 +30,9 @@ const registerUser = asyncHandler(async (req, res) => {
   // Validate incoming request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json(new ApiError(400, "Validation Error", errors.array()));
+    return res
+      .status(400)
+      .json(new ApiError(400, "Validation Error", errors.array()));
   }
 
   const {
@@ -58,7 +60,7 @@ const registerUser = asyncHandler(async (req, res) => {
   // Handle file upload (avatar)
   let avatarUrl;
   if (req.file) {
-    console.log(req.file)
+    console.log(req.file);
     const s3Path = `avatars/${Date.now()}_${req.file.originalname}`;
     const fileUrl = await s3Service.uploadFile(req.file, s3Path);
     avatarUrl = fileUrl.url;
@@ -100,8 +102,9 @@ const registerUser = asyncHandler(async (req, res) => {
       userId: createdUser._id,
       planId: freePlan._id,
       listingOffered: freePlan.maxProperties,
-      transactionId: null,
       endDate: endDate,
+      isActive: true,
+      status: "active",
     });
   }
   const { accessToken, refreshToken } = await createAccessOrRefreshToken(

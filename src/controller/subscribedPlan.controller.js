@@ -88,6 +88,7 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Subscription plan not found.");
   }
   const alreadySubscribed = SubscribedPlan.findOne({
+    userId: user._id,
     planId: planId,
     status: { $in: ["pending", "active"] },
   });
@@ -175,7 +176,7 @@ const makePlanActive = asyncHandler(async (req, res) => {
 
 const getAllSubscribedPlans = asyncHandler(async (req, res) => {
   const { status } = req.query;
-  const subscribedPlans = await SubscribedPlan.find({ status: status})
+  const subscribedPlans = await SubscribedPlan.find({ status: status })
     .populate("userId", "name email")
     .populate("planId", "name title description")
     .populate("transactionId");

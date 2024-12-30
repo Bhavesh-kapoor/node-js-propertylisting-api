@@ -5,7 +5,7 @@ import { Banner } from "../model/banner.model.js";
 import { isValidObjectId } from "../utils/helper.js";
 
 const createBanner = asyncHandler(async (req, res) => {
-  const { title, description, link, type } = req.body;
+  const { title, description, link, type, isActive } = req.body;
   // if (!req.file) {
   //   throw new ApiError(400, "Banner image is required");
   // }
@@ -15,12 +15,12 @@ const createBanner = asyncHandler(async (req, res) => {
   }
 
   const banner = await Banner.create({
-    title,
     type,
+    title,
     description,
-    image: req.file?.path,
     link: link?.trim(),
-    isActive: true,
+    image: req.file?.path,
+    isActive: isActive ?? false,
   });
 
   return res

@@ -38,7 +38,7 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     mobile,
     countryCode,
-    role = "dealer",
+    role,
     isEmailVerified,
     isMobileVerified,
     password,

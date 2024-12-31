@@ -319,8 +319,7 @@ const getCurrentSubscription = asyncHandler(async (req, res) => {
     isActive: true,
   })
     .populate("userId", "name email")
-    .populate("planId", "name title description")
-    .populate("transactionId");
+    .populate("planId", "name title description");
 
   if (!activeSubscription) {
     return res

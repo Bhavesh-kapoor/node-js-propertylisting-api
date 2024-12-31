@@ -54,6 +54,18 @@ const createProperty = asyncHandler(async (req, res) => {
   } = req.body;
   const user = req.user;
 
+  if (!user.isActive) {
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          null,
+          "Your Account is not Active for property listing!"
+        )
+      );
+  }
+
   const propertyData = {
     title,
     description,
@@ -73,6 +85,7 @@ const createProperty = asyncHandler(async (req, res) => {
     startDate: { $lte: currentDate },
     endDate: { $gte: currentDate },
     isActive: true,
+    status: "active",
   });
 
   if (!activeSubscription) {

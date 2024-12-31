@@ -87,7 +87,11 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Something went wrong while registering the user");
   }
   let newSubscribedPlan;
-  if (createdUser.role === "dealer") {
+  if (
+    createdUser.role === "dealer" ||
+    createdUser.role === "agent" ||
+    createdUser.role === "builder"
+  ) {
     const freePlan = await SubscriptionPlan.findOne({
       $or: [
         { "price.Monthly": 0 },

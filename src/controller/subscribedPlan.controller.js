@@ -89,15 +89,12 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
   if (!subscriptionPlan) {
     throw new ApiError(404, "Subscription plan not found.");
   }
-
-  // Check for any existing active or pending subscriptions
   const existingSubscription = await SubscribedPlan.findOne({
     userId: user._id,
     status: { $in: ["pending", "active"] },
   }).populate("planId");
 
   if (existingSubscription) {
-    // If there's a pending subscription, don't allow new subscription
     if (existingSubscription.status === "pending") {
       return res
         .status(200)
@@ -109,13 +106,29 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
           )
         );
     }
-
-    // If there's an active subscription
     if (existingSubscription.status === "active") {
       const isExistingPlanFree =
         existingSubscription.planId.price.Monthly === 0;
 
-      if (!isExistingPlanFree) {
+      // If the existing active plan is free, only allow one pending plan
+      if (isExistingPlanFree) {
+        const pendingPlan = await SubscribedPlan.findOne({
+          userId: user._id,
+          status: "pending",
+        });
+        if (pendingPlan) {
+          return res
+            .status(400)
+            .json(
+              new ApiResponse(
+                400,
+                null,
+                "You already have a free active plan and a pending subscription. Please wait for it to be activated."
+              )
+            );
+        }
+      } else {
+        // If the existing plan is not free, disallow a new subscription
         return res
           .status(400)
           .json(
@@ -166,6 +179,7 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
     )
   );
 });
+
 /*----------------------------------------make plan active--------------------------------*/
 const makePlanActive = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -211,13 +225,100 @@ const makePlanActive = asyncHandler(async (req, res) => {
 /*-----------------------------------------get all subscriptions----------------------------*/
 
 const getAllSubscribedPlans = asyncHandler(async (req, res) => {
-  const { status } = req.query;
-  const subscribedPlans = await SubscribedPlan.find({ status: status })
-    .populate("userId", "name email")
-    .populate("planId", "name title description")
-    .populate("transactionId");
+  const {
+    status,
+    page = 1,
+    limit = 10,
+    sort = "createdAt",
+    order = "desc",
+  } = req.query;
 
-  if (!subscribedPlans?.length) {
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const pipeline = [
+    {
+      $match: {
+        ...(status && { status }),
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    {
+      $unwind: "$user",
+    },
+    {
+      $lookup: {
+        from: "subscriptionplans",
+        localField: "planId",
+        foreignField: "_id",
+        as: "plan",
+      },
+    },
+    {
+      $unwind: "$plan",
+    },
+    {
+      $project: {
+        _id: 1,
+        status: 1,
+        startDate: 1,
+        endDate: 1,
+        userName: "$user.name",
+        userId: "$user.id",
+        userEmail: "$user.email",
+        planName: "$plan.name",
+        planTitle: "$plan.title",
+        planDescription: "$plan.description",
+      },
+    },
+    {
+      $sort: { [sort]: order === "desc" ? -1 : 1 },
+    },
+    {
+      $skip: skip,
+    },
+    {
+      $limit: Number(limit),
+    },
+  ];
+
+  // To calculate total count
+  const totalCountPipeline = [
+    {
+      $match: {
+        ...(status && { status }),
+      },
+    },
+    {
+      $count: "totalCount",
+    },
+  ];
+
+  const [subscribedPlans, totalCountResult] = await Promise.all([
+    SubscribedPlan.aggregate(pipeline),
+    SubscribedPlan.aggregate(totalCountPipeline),
+  ]);
+
+  const totalCount = totalCountResult[0]?.totalCount || 0;
+
+  const pagination = {
+    currentPage: Number(page),
+    totalPages: Math.ceil(totalCount / limit),
+    totalItems: totalCount,
+    itemsPerPage: Number(limit),
+  };
+
+  if (pagination.currentPage > pagination.totalPages && totalCount > 0) {
+    throw new ApiError(404, "Page not found");
+  }
+
+  if (!subscribedPlans.length) {
     return res
       .status(200)
       .json(new ApiResponse(200, {}, "No subscribed plans found!"));
@@ -228,11 +329,12 @@ const getAllSubscribedPlans = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        subscribedPlans,
+        { result: subscribedPlans, pagination },
         "Subscribed plans retrieved successfully"
       )
     );
 });
+
 
 /*-----------------------------------------get subscription by id----------------------------------*/
 

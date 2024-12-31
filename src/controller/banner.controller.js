@@ -134,8 +134,7 @@ const updateBanner = asyncHandler(async (req, res) => {
   banner.link = link?.trim() || banner.link;
 
   if (isActive !== undefined) {
-    banner.isActive =
-      typeof isActive === "boolean" ? isActive : banner.isActive;
+    banner.isActive = isActive;
   }
 
   // Handle file upload and deletion

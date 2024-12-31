@@ -60,7 +60,6 @@ const registerUser = asyncHandler(async (req, res) => {
   // Handle file upload (avatar)
   let avatarUrl;
   if (req.file) {
-    console.log(req.file);
     const s3Path = `avatars/${Date.now()}_${req.file.originalname}`;
     const fileUrl = await s3Service.uploadFile(req.file, s3Path);
     avatarUrl = fileUrl.url;

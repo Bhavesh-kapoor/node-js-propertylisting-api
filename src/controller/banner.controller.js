@@ -3,23 +3,30 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { Banner } from "../model/banner.model.js";
 import { isValidObjectId } from "../utils/helper.js";
+import s3ServiceWithProgress from "../config/awsS3.config.js";
 
+const s3Service = new s3ServiceWithProgress();
 const createBanner = asyncHandler(async (req, res) => {
   const { title, description, link, type, isActive } = req.body;
-  // if (!req.file) {
-  //   throw new ApiError(400, "Banner image is required");
-  // }
-  // Validate required fields
+
   if (!title?.trim() || !description?.trim()) {
     throw new ApiError(400, "Title and description are required");
   }
+
+  if (!req.file) {
+    throw new ApiError(400, "Banner image is required");
+  }
+  let image;
+  const s3Path = `banner/${Date.now()}_${req.file.originalname}`;
+  const fileUrl = await s3Service.uploadFile(req.file, s3Path);
+  image = fileUrl.url;
 
   const banner = await Banner.create({
     type,
     title,
     description,
-    link: link?.trim(),
-    image: req.file?.path,
+    link: link?.trim() || "",
+    image: image,
     isActive: isActive ?? false,
   });
 
@@ -64,7 +71,7 @@ const getBanners = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        { banners, pagination },
+        { result: banners, pagination },
         "Banners fetched successfully"
       )
     );
@@ -130,12 +137,21 @@ const updateBanner = asyncHandler(async (req, res) => {
   }
 
   // Update image if new file is uploaded
+  let image;
   if (req.file) {
-    banner.image = req.file.path;
+    const s3Path = `banner/${Date.now()}_${req.file.originalname}`;
+    const fileUrl = await s3Service.uploadFile(req.file, s3Path);
+    image = fileUrl.url;
   }
-
+  if (banner.image) {
+    try {
+      await s3Service.deleteFile(banner.image);
+    } catch (err) {
+      console.error("Error deleting old image:", err.message);
+    }
+  }
+  banner.image = image;
   await banner.save();
-
   return res
     .status(200)
     .json(new ApiResponse(200, banner, "Banner updated successfully"));
@@ -182,6 +198,13 @@ const deleteBanner = asyncHandler(async (req, res) => {
   if (!banner) {
     throw new ApiError(404, "Banner not found");
   }
+  if (banner.image) {
+    try {
+      await s3Service.deleteFile(banner.image);
+    } catch (err) {
+      console.error("Error deleting old image:", err.message);
+    }
+  }
 
   await Banner.findByIdAndDelete(id);
 
@@ -198,9 +221,26 @@ const deleteMultipleBanners = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please provide valid banner IDs");
   }
 
-  // Validate all IDs
   if (ids.some((id) => !isValidObjectId(id))) {
     throw new ApiError(400, "One or more invalid banner IDs");
+  }
+
+  const banners = await Banner.find({ _id: { $in: ids } });
+  if (!banners || banners.length === 0) {
+    throw new ApiError(404, "No banners found with the given IDs");
+  }
+
+  for (const banner of banners) {
+    if (banner.image) {
+      try {
+        await s3Service.deleteFile(banner.image);
+      } catch (err) {
+        console.error(
+          `Error deleting banner image (${banner.image}):`,
+          err.message
+        );
+      }
+    }
   }
 
   const result = await Banner.deleteMany({

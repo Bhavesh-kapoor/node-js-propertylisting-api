@@ -9,14 +9,15 @@ import {
   deleteBanner,
   deleteMultipleBanners,
 } from "../controller/banner.controller.js";
+import { multerUpload } from "../middlewere/multer.middlewere.js";
 const bannerRouter = Router();
 
-bannerRouter.post("/create", createBanner);
-bannerRouter.put("/update/:id", updateBanner);
+bannerRouter.post("/create", multerUpload.single("imageFile"), createBanner);
+bannerRouter.put("/update/:id", multerUpload.single("imageFile"), updateBanner);
 bannerRouter.get("/get/:id", getBannerById);
 bannerRouter.get("/get-active-banners", getActiveBanners);
 bannerRouter.put("/toggle-banner-status/:id", toggleBannerStatus);
-bannerRouter.delete("/delete", deleteBanner);
+bannerRouter.delete("/delete/:id", deleteBanner);
 bannerRouter.delete("/delete-multiples", deleteMultipleBanners);
 bannerRouter.get("/get-list", getBanners);
 

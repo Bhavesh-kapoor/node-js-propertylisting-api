@@ -71,4 +71,7 @@ import { findBlogById, getAllBlogs } from "../controller/BlogsController.js";
 router.get("/all-blogs", getAllBlogs);
 router.get("/get-blog/:_id", findBlogById);
 
+/*-------------------------------------Banners---------------------------------------*/
+import { getActiveBanners } from "../controller/banner.controller.js";
+router.get("/get-active-banners", getActiveBanners);
 export default router;

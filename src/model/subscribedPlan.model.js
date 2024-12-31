@@ -38,7 +38,7 @@ const SubscribedPlanSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "active", "inactive"],
+      enum: ["pending", "active", "inactive","expired"],
       default: "pending",
     },
   },

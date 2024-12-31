@@ -11,6 +11,7 @@ const updateSubscriptionStatuses = async () => {
     const expiredSubscriptions = await SubscribedPlan.find({
       endDate: { $lt: currentDate },
       isActive: true,
+      status: "active",
     }).select("userId");
 
     if (expiredSubscriptions.length > 0) {
@@ -28,10 +29,12 @@ const updateSubscriptionStatuses = async () => {
           userId: { $in: userIds },
           endDate: { $lt: currentDate },
           isActive: true,
+          status: "active",
         },
         {
           $set: {
             isActive: false,
+            status: "expired",
           },
         }
       );

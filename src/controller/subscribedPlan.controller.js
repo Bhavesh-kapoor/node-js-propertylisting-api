@@ -5,6 +5,7 @@ import { SubscribedPlan } from "../model/subscribedPlan.model.js";
 import { SubscriptionPlan } from "../model/subscriptionPlan.model.js";
 import { User } from "../model/user.model.js";
 import { addDays } from "date-fns";
+import mongoose from "mongoose";
 
 /*---------------------------------------------subscribe to an new plan------------------------------*/
 
@@ -181,43 +182,81 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
 });
 
 /*----------------------------------------make plan active--------------------------------*/
+
 const makePlanActive = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const { status } = req.body;
 
   if (!id) {
     throw new ApiError(400, "Subscribed plan ID is required");
   }
+
+  if (!status) {
+    throw new ApiError(400, "Status is required");
+  }
+
   const subscribedPlan = await SubscribedPlan.findById(id);
   if (!subscribedPlan) {
     throw new ApiError(404, "Subscribed plan not found");
   }
-  const user = await User.findById(subscribedPlan.userId);
-  const currentDate = new Date();
-  const existingPlan = await SubscribedPlan.findOne({
-    userId: subscribedPlan.userId,
-    startDate: { $lte: currentDate },
-    endDate: { $gte: currentDate },
-    isActive: true,
-  });
-  let listingOffered = subscribedPlan.listingOffered;
-  if (existingPlan) {
-    listingOffered =
-      listingOffered + (existingPlan.listingOffered - existingPlan.listed);
+  if (
+    subscribedPlan.status === "active" &&
+    subscribedPlan.isActive &&
+    status === "active"
+  ) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, null, "This plan is already Active"));
   }
-  subscribedPlan.listingOffered = listingOffered;
-  subscribedPlan.isActive = true;
-  subscribedPlan.status = "active";
+  const user = await User.findById(subscribedPlan.userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // Perform calculations only if the requested status is "active"
+  if (status === "active") {
+    const currentDate = new Date();
+
+    // Check if there's an existing active plan
+    const existingPlan = await SubscribedPlan.findOne({
+      userId: subscribedPlan.userId,
+      startDate: { $lte: currentDate },
+      endDate: { $gte: currentDate },
+      isActive: true,
+    });
+
+    let listingOffered = subscribedPlan.listingOffered;
+
+    if (existingPlan) {
+      listingOffered =
+        listingOffered + (existingPlan.listingOffered - existingPlan.listed);
+      subscribedPlan.listed = existingPlan.listed;
+      existingPlan.isActive = false;
+      await existingPlan.save();
+    }
+    subscribedPlan.listingOffered = listingOffered;
+    subscribedPlan.isActive = true;
+    subscribedPlan.status = "active";
+  } else {
+    subscribedPlan.status = status;
+    subscribedPlan.isActive = false;
+  }
+
   await subscribedPlan.save();
-  existingPlan.isActive = false;
-  await existingPlan.save();
-  user.isVerified = true;
+
+  // Verify the user when activating a plan
+  if (status === "active") {
+    user.isVerified = true;
+    await user.save();
+  }
+
   return res
     .status(200)
     .json(
       new ApiResponse(
         200,
         subscribedPlan,
-        "Subscribed plan made active successfully"
+        `Subscribed plan status updated to "${status}" successfully`
       )
     );
 });
@@ -335,7 +374,6 @@ const getAllSubscribedPlans = asyncHandler(async (req, res) => {
     );
 });
 
-
 /*-----------------------------------------get subscription by id----------------------------------*/
 
 const getSubscribedPlanById = asyncHandler(async (req, res) => {
@@ -345,12 +383,72 @@ const getSubscribedPlanById = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Subscribed plan ID is required");
   }
 
-  const subscribedPlan = await SubscribedPlan.findById(id)
-    .populate("userId", "name email")
-    .populate("planId", "name title description")
-    .populate("transactionId");
+  const pipeline = [
+    {
+      $match: { _id: new mongoose.Types.ObjectId(id) },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    {
+      $unwind: {
+        path: "$user",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptionplans",
+        localField: "planId",
+        foreignField: "_id",
+        as: "plan",
+      },
+    },
+    {
+      $unwind: {
+        path: "$plan",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $lookup: {
+        from: "transactions",
+        localField: "transactionId",
+        foreignField: "_id",
+        as: "transaction",
+      },
+    },
+    {
+      $unwind: {
+        path: "$transaction",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        status: 1,
+        startDate: 1,
+        endDate: 1,
+        userName: "$user.name",
+        userId: "$user._id",
+        userEmail: "$user.email",
+        planName: "$plan.name",
+        planTitle: "$plan.title",
+        planDescription: "$plan.description",
+        transactionId: "$transaction._id",
+      },
+    },
+  ];
 
-  if (!subscribedPlan) {
+  const subscribedPlan = await SubscribedPlan.aggregate(pipeline);
+
+  if (!subscribedPlan.length) {
     return res
       .status(200)
       .json(new ApiResponse(200, {}, "No subscribed plans found!"));
@@ -361,7 +459,7 @@ const getSubscribedPlanById = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        subscribedPlan,
+        subscribedPlan[0],
         "Subscribed plan retrieved successfully"
       )
     );

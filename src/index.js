@@ -9,24 +9,24 @@ dotenv.config({
 
 app.use(
   cors({
-    origin: "http://localhost:3000", // Replace with your frontend URL
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true, // Include credentials if necessary (e.g., cookies)
+    origin: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    credentials: true,
   })
 );
 
-  const startServer = async () => {
-    try {
-      await connectDB();
-      app.listen(process.env.PORT || 8000, () => {
-        logger.info(
-          `⚙️  Server is running at http://localhost:${process.env.PORT}`.green
-        );
-      });
-    } catch (err) {
-      logger.error(`Failed to start the server: ${err.message}`);
-      process.exit(1);
-    }
-  };
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(process.env.PORT || 8000, () => {
+      logger.info(
+        `⚙️  Server is running at http://localhost:${process.env.PORT}`.green
+      );
+    });
+  } catch (err) {
+    logger.error(`Failed to start the server: ${err.message}`);
+    process.exit(1);
+  }
+};
 
-  startServer()
+startServer();

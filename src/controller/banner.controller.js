@@ -119,38 +119,51 @@ const updateBanner = asyncHandler(async (req, res) => {
   const { title, description, link, isActive } = req.body;
 
   if (!isValidObjectId(id)) {
-    throw new ApiError(400, "Invalid banner ID");
+    return res
+      .status(400)
+      .json(new ApiResponse(400, null, "Invalid banner ID"));
   }
 
   const banner = await Banner.findById(id);
-
   if (!banner) {
-    throw new ApiError(404, "Banner not found");
+    return res.status(404).json(new ApiResponse(404, null, "Banner not found"));
   }
 
   banner.title = title?.trim() || banner.title;
   banner.description = description?.trim() || banner.description;
   banner.link = link?.trim() || banner.link;
 
-  if (typeof isActive === "boolean") {
-    banner.isActive = isActive;
+  if (isActive !== undefined) {
+    banner.isActive =
+      typeof isActive === "boolean" ? isActive : banner.isActive;
   }
 
-  // Update image if new file is uploaded
-  let image;
+  // Handle file upload and deletion
   if (req.file) {
     const s3Path = `banner/${Date.now()}_${req.file.originalname}`;
-    const fileUrl = await s3Service.uploadFile(req.file, s3Path);
-    image = fileUrl.url;
-  }
-  if (banner.image) {
     try {
-      await s3Service.deleteFile(banner.image);
+      const fileUrl = await s3Service.uploadFile(req.file, s3Path);
+      const newImageUrl = fileUrl?.url;
+
+      if (!newImageUrl) {
+        throw new Error("Image upload failed");
+      }
+      if (banner.image) {
+        try {
+          await s3Service.deleteFile(banner.image);
+        } catch (err) {
+          console.error("Error deleting old image:", err.message);
+        }
+      }
+
+      banner.image = newImageUrl;
     } catch (err) {
-      console.error("Error deleting old image:", err.message);
+      console.error("Error uploading new image:", err.message);
+      return res
+        .status(500)
+        .json(new ApiResponse(500, null, "Image upload failed"));
     }
   }
-  banner.image = image;
   await banner.save();
   return res
     .status(200)

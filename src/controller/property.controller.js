@@ -219,6 +219,8 @@ const getProperties = asyncHandler(async (req, res) => {
           avatarUrl: "$ownerDetails.avatarUrl",
           mobile: "$ownerDetails.mobile",
         },
+        ownerName: "$ownerDetails.name",
+        isVerified: "$ownerDetails.isVerified",
       },
     },
     {
@@ -232,12 +234,15 @@ const getProperties = asyncHandler(async (req, res) => {
   ]);
 
   // Filter properties for recommended flag
-  const filteredProperties = recommended === "true"
-    ? properties.filter((property) => property.owner.isVerified)
-    : properties;
+  const filteredProperties =
+    recommended === "true"
+      ? properties.filter((property) => property.owner.isVerified)
+      : properties;
 
   // Get unique owner IDs
-  const ownerIds = [...new Set(filteredProperties.map((prop) => prop.owner._id))];
+  const ownerIds = [
+    ...new Set(filteredProperties.map((prop) => prop.owner._id)),
+  ];
 
   // Fetch active subscriptions
   const activeSubscriptions = await SubscribedPlan.find({
@@ -266,7 +271,9 @@ const getProperties = asyncHandler(async (req, res) => {
   // Add subscription details
   const propertiesWithTags = filteredProperties.map((property) => {
     const { ownerDetails, ...cleanedProperty } = property;
-    const ownerSubscription = subscriptionMap.get(property.owner._id.toString());
+    const ownerSubscription = subscriptionMap.get(
+      property.owner._id.toString()
+    );
 
     return {
       ...cleanedProperty,
@@ -296,7 +303,6 @@ const getProperties = asyncHandler(async (req, res) => {
     )
   );
 });
-
 
 /*--------------------------------------------Get a single property----------------------------------------*/
 const getProperty = asyncHandler(async (req, res) => {
@@ -422,6 +428,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     owner,
     images,
     videoUrl,
+    isActive,
   } = req.body;
 
   const property = await Property.findById(id);
@@ -440,6 +447,8 @@ const updateProperty = asyncHandler(async (req, res) => {
   if (status) property.status = status;
   if (features) property.features = features;
   if (owner) property.owner = owner;
+  if (videoUrl) property.videoUrl = videoUrl;
+  if (isActive) property.isActive = isActive;
 
   if (address) {
     property.address = {

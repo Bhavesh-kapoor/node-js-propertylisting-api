@@ -121,25 +121,62 @@ const getQueries = asyncHandler(async (req, res) => {
     order = "desc",
   } = req.query;
 
-  const filter = {};
+  const matchStage = {};
 
-  // Apply filters
-  if (status) filter.status = status;
-  if (propertyId && isValidObjectId(propertyId)) filter.propertyId = propertyId;
+  if (status) matchStage.status = status;
+  if (propertyId && isValidObjectId(propertyId))
+    matchStage.propertyId = mongoose.Types.ObjectId(propertyId);
 
-  // If user is not admin, only show their queries
   if (req.user.role !== "admin") {
-    filter.propertyOwner = req.user._id;
+    matchStage.propertyOwner = mongoose.Types.ObjectId(req.user._id);
   }
 
-  const queries = await PropertyQuery.find(filter)
-    .populate("propertyId", "title slug")
-    .populate("propertyOwner", "name email")
-    .sort({ [sort]: order === "desc" ? -1 : 1 })
-    .limit(Number(limit))
-    .skip((Number(page) - 1) * Number(limit));
+  const sortOrder = order === "desc" ? -1 : 1;
 
-  const totalCount = await PropertyQuery.countDocuments(filter);
+  const pipeline = [
+    { $match: matchStage },
+    {
+      $lookup: {
+        from: "properties",
+        localField: "propertyId",
+        foreignField: "_id",
+        as: "property",
+      },
+    },
+    { $unwind: { path: "$property", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "propertyOwner",
+        foreignField: "_id",
+        as: "owner",
+      },
+    },
+    { $unwind: { path: "$owner", preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 1,
+        senderName: 1,
+        senderEmail: 1,
+        senderMobile: 1,
+        query: 1,
+        status: 1,
+        propertyId: "$property._id",
+        propertyTitle: "$property.title",
+        propertySlug: "$property.slug",
+        ownerId: "$owner._id",
+        ownerName: "$owner.name",
+        ownerEmail: "$owner.email",
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    },
+    { $sort: { [sort]: sortOrder } },
+    { $skip: (Number(page) - 1) * Number(limit) },
+    { $limit: Number(limit) },
+  ];
+  const queries = await PropertyQuery.aggregate(pipeline);
+  const totalCount = await PropertyQuery.countDocuments(matchStage);
 
   const pagination = {
     currentPage: Number(page),

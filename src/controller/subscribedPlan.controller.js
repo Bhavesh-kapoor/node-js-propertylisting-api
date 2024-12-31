@@ -84,46 +84,79 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
   const { planId } = req.params;
   const { duration } = req.body;
   const user = req.user;
+
   const subscriptionPlan = await SubscriptionPlan.findById(planId);
   if (!subscriptionPlan) {
     throw new ApiError(404, "Subscription plan not found.");
   }
 
-  const alreadySubscribed = await SubscribedPlan.findOne({
+  // Check for any existing active or pending subscriptions
+  const existingSubscription = await SubscribedPlan.findOne({
     userId: user._id,
-    planId: planId,
     status: { $in: ["pending", "active"] },
-  });
-  console.log("alreadySubscribed",alreadySubscribed)
-  if (alreadySubscribed) {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, null, "This plan is already subscribed"));
+  }).populate("planId");
+
+  if (existingSubscription) {
+    // If there's a pending subscription, don't allow new subscription
+    if (existingSubscription.status === "pending") {
+      return res
+        .status(200)
+        .json(
+          new ApiResponse(
+            200,
+            null,
+            "You have a pending subscription. Please wait for it to be activated."
+          )
+        );
+    }
+
+    // If there's an active subscription
+    if (existingSubscription.status === "active") {
+      const isExistingPlanFree =
+        existingSubscription.planId.price.Monthly === 0;
+
+      if (!isExistingPlanFree) {
+        return res
+          .status(400)
+          .json(
+            new ApiResponse(
+              400,
+              null,
+              "You already have an active paid subscription plan."
+            )
+          );
+      }
+    }
   }
+
+  // Calculate end date based on duration
   let endDate;
   const currentDate = new Date();
   switch (duration) {
     case "Monthly":
-      endDate = addDays(currentDate, 28); // Add 28 days for monthly
+      endDate = addDays(currentDate, 28);
       break;
     case "Quarterly":
-      endDate = addDays(currentDate, 84); // Add 84 days for quarterly
+      endDate = addDays(currentDate, 84);
       break;
     case "Yearly":
-      endDate = addDays(currentDate, 365); // Add 365 days for yearly
+      endDate = addDays(currentDate, 365);
       break;
     default:
       endDate = currentDate;
       break;
   }
-  let listingOffered = subscriptionPlan.maxProperties;
+
+  // Create new subscription
+  const listingOffered = subscriptionPlan.maxProperties;
   const newSubscribedPlan = await SubscribedPlan.create({
     userId: user._id,
     planId: planId,
     listingOffered: listingOffered,
     endDate: endDate,
   });
-  res.status(201).json(
+
+  return res.status(201).json(
     new ApiResponse(
       201,
       {
@@ -185,7 +218,9 @@ const getAllSubscribedPlans = asyncHandler(async (req, res) => {
     .populate("transactionId");
 
   if (!subscribedPlans?.length) {
-    throw new ApiError(404, "No subscribed plans found");
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "No subscribed plans found!"));
   }
 
   return res
@@ -214,7 +249,9 @@ const getSubscribedPlanById = asyncHandler(async (req, res) => {
     .populate("transactionId");
 
   if (!subscribedPlan) {
-    throw new ApiError(404, "Subscribed plan not found");
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "No subscribed plans found!"));
   }
 
   return res
@@ -243,7 +280,11 @@ const getSubscribedPlansByUserId = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 }); // Get latest subscriptions first
 
   if (!subscribedPlans?.length) {
-    return res.status(200).json(new ApiResponse(200,{},"No subscribed plans found for this user"));
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, {}, "No subscribed plans found for this user")
+      );
   }
 
   return res
@@ -282,7 +323,11 @@ const getCurrentSubscription = asyncHandler(async (req, res) => {
     .populate("transactionId");
 
   if (!activeSubscription) {
-    throw new ApiError(404, "No active subscription found for this user");
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, {}, "No subscribed plans found for this user")
+      );
   }
 
   return res

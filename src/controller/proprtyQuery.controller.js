@@ -126,10 +126,10 @@ const getQueries = asyncHandler(async (req, res) => {
 
   if (status) matchStage.status = status;
   if (propertyId && isValidObjectId(propertyId))
-    matchStage.propertyId = mongoose.Types.ObjectId(propertyId);
+    matchStage.propertyId = new mongoose.Types.ObjectId(propertyId);
 
   if (req.user.role !== "admin") {
-    matchStage.propertyOwner = mongoose.Types.ObjectId(req.user._id);
+    matchStage.propertyOwner = new mongoose.Types.ObjectId(req.user._id);
   }
 
   const sortOrder = order === "desc" ? -1 : 1;

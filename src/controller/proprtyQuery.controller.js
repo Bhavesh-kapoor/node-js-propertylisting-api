@@ -6,6 +6,7 @@ import { Property } from "../model/property.model.js";
 import { isValidObjectId } from "mongoose";
 import { sendMail } from "../utils/helper.js";
 import { getPropertyQueryTemplate } from "../utils/emailContent.js";
+import mongoose from "mongoose";
 
 /*------------------------ Create a new property query-------------------------------*/
 

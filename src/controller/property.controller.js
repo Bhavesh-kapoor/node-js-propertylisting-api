@@ -200,6 +200,7 @@ const getProperties = asyncHandler(async (req, res) => {
   if (status) {
     filter.status = status;
   }
+  filter.isActive =  true;
 
   // Filter by amenities
   if (amenities) {

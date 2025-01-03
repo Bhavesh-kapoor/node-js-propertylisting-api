@@ -155,6 +155,7 @@ const getProperties = asyncHandler(async (req, res) => {
     page = 1,
     limit = 10,
     sortBy = "createdAt",
+    isadmin  = false,
     sortOrder = "desc",
   } = req.query;
 
@@ -199,6 +200,11 @@ const getProperties = asyncHandler(async (req, res) => {
   // Filter by status
   if (status) {
     filter.status = status;
+  }
+
+  if(isadmin == false){
+    filter.isActive =  true;
+
   }
 
   // Filter by amenities

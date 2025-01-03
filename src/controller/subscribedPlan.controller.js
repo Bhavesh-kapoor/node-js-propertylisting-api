@@ -129,7 +129,6 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
             );
         }
       } else {
-        // If the existing plan is not free, disallow a new subscription
         return res
           .status(400)
           .json(
@@ -157,7 +156,7 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
       endDate = addDays(currentDate, 365);
       break;
     default:
-      endDate = currentDate;
+      endDate = addDays(currentDate, 28);
       break;
   }
 
@@ -182,7 +181,6 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
 });
 
 /*----------------------------------------make plan active--------------------------------*/
-
 const makePlanActive = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -190,11 +188,9 @@ const makePlanActive = asyncHandler(async (req, res) => {
   if (!id) {
     throw new ApiError(400, "Subscribed plan ID is required");
   }
-
   if (!status) {
     throw new ApiError(400, "Status is required");
   }
-
   const subscribedPlan = await SubscribedPlan.findById(id);
   if (!subscribedPlan) {
     throw new ApiError(404, "Subscribed plan not found");

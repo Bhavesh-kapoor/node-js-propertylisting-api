@@ -155,7 +155,7 @@ const getProperties = asyncHandler(async (req, res) => {
     page = 1,
     limit = 10,
     sortBy = "createdAt",
-    isadmin  = false,
+    isadmin = false,
     sortOrder = "desc",
   } = req.query;
 
@@ -202,9 +202,8 @@ const getProperties = asyncHandler(async (req, res) => {
     filter.status = status;
   }
 
-  if(isadmin == false){
-    filter.isActive =  true;
-
+  if (isadmin == false) {
+    filter.isActive = true;
   }
 
   // Filter by amenities
@@ -257,12 +256,10 @@ const getProperties = asyncHandler(async (req, res) => {
     recommended === "true"
       ? properties.filter((property) => property.owner.isVerified)
       : properties;
-
   // Get unique owner IDs
   const ownerIds = [
     ...new Set(filteredProperties.map((prop) => prop.owner._id)),
   ];
-
   // Fetch active subscriptions
   const activeSubscriptions = await SubscribedPlan.find({
     userId: { $in: ownerIds },
@@ -274,7 +271,6 @@ const getProperties = asyncHandler(async (req, res) => {
       select: "title name",
     })
     .lean();
-
   // Create subscription map
   const subscriptionMap = new Map(
     activeSubscriptions.map((sub) => [
@@ -299,7 +295,7 @@ const getProperties = asyncHandler(async (req, res) => {
       owner: {
         ...property.owner,
       },
-      tag: ownerSubscription?.title || null,
+      tag: ownerSubscription?.title || "",
     };
   });
 

@@ -738,6 +738,50 @@ const calculateSimilarityScore = (reference, property) => {
 
   return Math.round(score);
 };
+
+const getFilterValues = asyncHandler(async (req, res) => {
+  const propertyTypes = await Property.distinct("propertyType");
+  const countriesWithStates = await Property.aggregate([
+    {
+      $group: {
+        _id: "$address.country",
+        states: { $addToSet: "$address.state" },
+      },
+    },
+    {
+      $project: {
+        country: "$_id",
+        states: 1,
+        _id: 0,
+      },
+    },
+  ]);
+
+  const minPrice = await Property.findOne()
+    .sort({ price: 1 })
+    .select("price")
+    .exec();
+  const maxPrice = await Property.findOne()
+    .sort({ price: -1 })
+    .select("price")
+    .exec();
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        propertyTypes,
+        countries: countriesWithStates,
+        priceRange: {
+          min: minPrice?.price || 0,
+          max: maxPrice?.price || 0,
+        },
+      },
+      "Filter values fetched successfully."
+    )
+  );
+});
+
 export {
   createProperty,
   getProperties,
@@ -748,4 +792,5 @@ export {
   listedProperties,
   getSimilarProperties,
   getPropertyBySlug,
+  getFilterValues,
 };

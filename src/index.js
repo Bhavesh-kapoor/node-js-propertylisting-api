@@ -6,7 +6,6 @@ import { logger } from "./config/logger.js";
 dotenv.config({
   path: "./.env",
 });
-
 app.use(
   cors({
     origin: true,

@@ -53,6 +53,7 @@ router.get("/get-subscription-plans", getAllSubscriptionPlans);
 /*---------------------------------------------------get property list-------------------------*/
 import {
   getProperties,
+  getFilterValues,
   getProperty,
   getSimilarProperties,
   getPropertyBySlug,
@@ -61,6 +62,7 @@ router.get("/get-properties", getProperties);
 router.get("/get-similar-properties/:propertyId", getSimilarProperties);
 router.get("/get-property/:id", getProperty);
 router.get("/get-by-slug/:slug", getPropertyBySlug);
+router.get("/get-filters", getFilterValues);
 
 /*-------------------------------------property query---------------------------------------*/
 import { raisePropertyQuery } from "../controller/proprtyQuery.controller.js";

@@ -4,8 +4,11 @@ const BannerSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["property", "listing", "home"],
-      required: true,
+      enum: ["property", "listing", "home", "city"],
+    },
+    cityName: {
+      type: String,
+      trim: true,
     },
     title: {
       type: String,
@@ -14,7 +17,6 @@ const BannerSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      required: true,
       trim: true,
     },
     image: {

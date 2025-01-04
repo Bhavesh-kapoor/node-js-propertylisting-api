@@ -7,11 +7,7 @@ import s3ServiceWithProgress from "../config/awsS3.config.js";
 
 const s3Service = new s3ServiceWithProgress();
 const createBanner = asyncHandler(async (req, res) => {
-  const { title, description, link, type, isActive } = req.body;
-
-  if (!title?.trim() || !description?.trim()) {
-    throw new ApiError(400, "Title and description are required");
-  }
+  const { title, description, link, cityName, type, isActive } = req.body;
 
   if (!req.file) {
     throw new ApiError(400, "Banner image is required");
@@ -24,6 +20,7 @@ const createBanner = asyncHandler(async (req, res) => {
   const banner = await Banner.create({
     type,
     title,
+    cityName: cityName?.trim().toLowerCase(),
     description,
     link: link?.trim() || "",
     image: image,
@@ -42,16 +39,22 @@ const getBanners = asyncHandler(async (req, res) => {
     limit = 10,
     sort = "createdAt",
     order = "desc",
+    type,
+    cityName,
     isActive,
   } = req.query;
 
   const filter = {};
-
+  if (type) {
+    filter.type = type;
+  }
+  if (cityName) {
+    filter.cityName = { $regex: new RegExp(cityName.trim(), "i") };
+  }
   // Apply isActive filter if provided
   if (typeof isActive !== "undefined") {
     filter.isActive = isActive === "true";
   }
-
   const banners = await Banner.find(filter)
     .sort({ [sort]: order === "desc" ? -1 : 1 })
     .limit(Number(limit))
@@ -79,11 +82,14 @@ const getBanners = asyncHandler(async (req, res) => {
 
 // Get active banners
 const getActiveBanners = asyncHandler(async (req, res) => {
-  const { limit = 5, type } = req.query;
+  const { limit = 5, type, cityName } = req.query;
 
   const query = { isActive: true };
   if (type) {
     query.type = type;
+  }
+  if (cityName) {
+    filter.cityName = { $regex: new RegExp(cityName.trim(), "i") };
   }
   const banners = await Banner.find(query)
     .sort({ createdAt: -1 })

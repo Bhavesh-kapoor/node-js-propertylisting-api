@@ -57,12 +57,14 @@ import {
   getProperty,
   getSimilarProperties,
   getPropertyBySlug,
+  getActivePropertyCities,
 } from "../controller/property.controller.js";
 router.get("/get-properties", getProperties);
 router.get("/get-similar-properties/:propertyId", getSimilarProperties);
 router.get("/get-property/:id", getProperty);
 router.get("/get-by-slug/:slug", getPropertyBySlug);
 router.get("/get-filters", getFilterValues);
+router.get("/get-cities", getActivePropertyCities);
 
 /*-------------------------------------property query---------------------------------------*/
 import { raisePropertyQuery } from "../controller/proprtyQuery.controller.js";

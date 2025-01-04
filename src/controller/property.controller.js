@@ -810,6 +810,19 @@ const getFilterValues = asyncHandler(async (req, res) => {
   );
 });
 
+const getActivePropertyCities = asyncHandler(async (req, res) => {
+  const cities = await Property.aggregate([
+    { $match: { isActive: true } },
+    { $group: { _id: "$address.city" } },
+    { $sort: { _id: 1 } },
+  ]);
+  const cityList = cities.map((city) => city._id);
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, cityList, "city list fatched successfully"));
+});
+
 export {
   createProperty,
   getProperties,
@@ -821,4 +834,5 @@ export {
   getSimilarProperties,
   getPropertyBySlug,
   getFilterValues,
+  getActivePropertyCities,
 };

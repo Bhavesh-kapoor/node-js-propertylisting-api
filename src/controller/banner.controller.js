@@ -89,7 +89,7 @@ const getActiveBanners = asyncHandler(async (req, res) => {
     query.type = type;
   }
   if (cityName) {
-    filter.cityName = { $regex: new RegExp(cityName.trim(), "i") };
+    query.cityName = { $regex: new RegExp(cityName.trim(), "i") };
   }
   const banners = await Banner.find(query)
     .sort({ createdAt: -1 })

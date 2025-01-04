@@ -669,11 +669,10 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
   })
     .populate({
       path: "planId",
-      // select: "title name icon",
+      select: "title name icon",
     })
     .lean();
 
-  console.log("activeSubscriptions", activeSubscriptions);
   // Create subscription map for O(1) lookup
   const subscriptionMap = new Map(
     activeSubscriptions.map((sub) => [

@@ -742,8 +742,12 @@ const calculateSimilarityScore = (reference, property) => {
 };
 
 const getFilterValues = asyncHandler(async (req, res) => {
-  const propertyTypes = await Property.distinct("propertyType");
+  const propertyTypes = await Property.distinct("propertyType", { isActive: true });
+
   const countriesWithStates = await Property.aggregate([
+    {
+      $match: { isActive: true }, // Ensure only active properties are considered
+    },
     {
       $group: {
         _id: "$address.country",
@@ -759,11 +763,12 @@ const getFilterValues = asyncHandler(async (req, res) => {
     },
   ]);
 
-  const minPrice = await Property.findOne()
+  const minPrice = await Property.findOne({ isActive: true })
     .sort({ price: 1 })
     .select("price")
     .exec();
-  const maxPrice = await Property.findOne()
+
+  const maxPrice = await Property.findOne({ isActive: true })
     .sort({ price: -1 })
     .select("price")
     .exec();
@@ -783,6 +788,7 @@ const getFilterValues = asyncHandler(async (req, res) => {
     )
   );
 });
+
 
 export {
   createProperty,

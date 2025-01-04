@@ -73,7 +73,7 @@ const propertySchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["For-Sale", "For-Rent", "Sold", "Rented"],
+      enum: ["For-Sale", "For-Rent", "Sold", "Rented","Ready-to-move"],
       default: "For-Sale",
     },
     amenities: [

@@ -307,7 +307,7 @@ const loginAdmin = asyncHandler(async (req, res) => {
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
-  const { name, email, isEmailVerified, address, isActive } = req.body;
+  const { name, email, isEmailVerified, address, isActive,priorityRank } = req.body;
 
   // Email verification requirement check
   if (email && !isEmailVerified) {
@@ -322,6 +322,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   if (name) updateFields.name = name;
   if (email) updateFields.email = email;
   if (isActive) updateFields.isActive = isActive;
+  if (priorityRank) updateFields.priorityRank = priorityRank;
 
   if (isEmailVerified !== undefined)
     updateFields.isEmailVerified = isEmailVerified;

@@ -5,7 +5,6 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { getPipeline, paginationResult } from "../utils/helper.js";
 
-
 export const validateDealerData = [
   check("title", " title is required!").notEmpty(),
   check("keyword", "keyword is required!").notEmpty(),
@@ -67,9 +66,11 @@ export const listDealerData = asyncHandler(async (req, res) => {
 //get Dealerdata by id
 export const getDealerDataById = asyncHandler(async (req, res) => {
   const { _id } = req.params;
-  const data = await User.findById(_id);
+  const data = await User.findById(_id).select("-refreshToken -password");
   if (!data) {
-    return res.status(404).json(new ApiError(404, "", "invalid Seo data id!"));
+    return res.status(404).json(new ApiError(404, null, "invalid id!"));
   }
-  return res.status(200).json(new ApiResponse(200, data));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, data, "data fatched successfully"));
 });

@@ -119,10 +119,10 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
         });
         if (pendingPlan) {
           return res
-            .status(400)
+            .status(200)
             .json(
               new ApiResponse(
-                400,
+                200,
                 null,
                 "You already have a free active plan and a pending subscription. Please wait for it to be activated."
               )
@@ -130,10 +130,10 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
         }
       } else {
         return res
-          .status(400)
+          .status(200)
           .json(
             new ApiResponse(
-              400,
+              200,
               null,
               "You already have an active paid subscription plan."
             )

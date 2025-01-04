@@ -159,22 +159,18 @@ const propertySchema = new mongoose.Schema(
     specifications: {
       bedrooms: {
         type: Number,
-        required: [true, "Number of bedrooms is required"],
         min: 0,
       },
       bathrooms: {
         type: Number,
-        required: [true, "Number of bathrooms is required"],
         min: 0,
       },
       area: {
         type: Number,
-        required: [true, "Area is required"],
         min: 0,
       },
       landArea: {
         type: Number,
-        required: [true, "Land area is required"],
         min: 0,
       },
       floors: {

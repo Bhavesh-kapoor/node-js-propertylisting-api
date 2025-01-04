@@ -78,6 +78,7 @@ const createProperty = asyncHandler(async (req, res) => {
     videoUrl,
     owner: user._id,
   };
+  
   const currentDate = new Date();
 
   const activeSubscription = await SubscribedPlan.findOne({

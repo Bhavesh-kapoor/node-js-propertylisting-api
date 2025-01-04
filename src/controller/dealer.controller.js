@@ -5,13 +5,13 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { getPipeline, paginationResult } from "../utils/helper.js";
 
+
 export const validateDealerData = [
   check("title", " title is required!").notEmpty(),
   check("keyword", "keyword is required!").notEmpty(),
   check("descriptions", "descriptions  is required!").notEmpty(),
   check("noIndex", "noIndex  is required!").notEmpty(),
 ];
-
 // delete Seo Data
 export const deleteDealerData = asyncHandler(async (req, res) => {
   const { _id } = req.params;

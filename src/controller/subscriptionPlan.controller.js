@@ -2,9 +2,19 @@ import { SubscriptionPlan } from "../model/subscriptionPlan.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiError.js";
+import s3ServiceWithProgress from "../config/awsS3.config.js";
+
+const s3Service = new s3ServiceWithProgress();
 /*----------------------------------Create a subscription plan---------------------------------*/
 const createSubscriptionPlan = asyncHandler(async (req, res) => {
-  const { name, title, description, price, maxProperties } = req.body;
+  const {
+    name,
+    title,
+    description,
+    price,
+    maxProperties,
+    isActive = false,
+  } = req.body;
 
   if (!price) {
     return res
@@ -28,21 +38,21 @@ const createSubscriptionPlan = asyncHandler(async (req, res) => {
       );
   }
 
-  if (
-    price.Quarterly === undefined ||
-    price.Quarterly === null ||
-    price.Quarterly < 0
-  ) {
-    return res
-      .status(400)
-      .json(
-        new ApiResponse(
-          400,
-          null,
-          "Quarterly price is required and must be 0 or greater."
-        )
-      );
-  }
+  // if (
+  //   price.Quarterly === undefined ||
+  //   price.Quarterly === null ||
+  //   price.Quarterly < 0
+  // ) {
+  //   return res
+  //     .status(400)
+  //     .json(
+  //       new ApiResponse(
+  //         400,
+  //         null,
+  //         "Quarterly price is required and must be 0 or greater."
+  //       )
+  //     );
+  // }
 
   if (price.Yearly === undefined || price.Yearly === null || price.Yearly < 0) {
     return res
@@ -67,12 +77,22 @@ const createSubscriptionPlan = asyncHandler(async (req, res) => {
         )
       );
   }
+  let icon = "";
+  if (req.file) {
+    const s3Path = `subscription-icon/${Date.now()}_${
+      req.file.originalname
+    }`;
+    const fileUrl = await s3Service.uploadFile(req.file, s3Path);
+    icon = fileUrl.url;
+  }
   const newPlan = new SubscriptionPlan({
     name,
     title,
     description,
     price,
     maxProperties,
+    icon,
+    isActive,
   });
   if (!newPlan) {
     return res
@@ -92,16 +112,14 @@ const createSubscriptionPlan = asyncHandler(async (req, res) => {
 const updateSubscriptionPlan = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, title, description, price, maxProperties, isActive } = req.body;
-  if (!price || !price.Monthly || !price.Quarterly || !price.Yearly) {
-    return res
-      .status(400)
-      .json(
-        new ApiResponse(
-          400,
-          null,
-          "All price fields (Monthly, Quarterly, Yearly) are required."
-        )
-      );
+
+  if (!id) {
+    throw new ApiError(400, "Subscription plan ID is required");
+  }
+  // Find the existing plan first
+  const plan = await SubscriptionPlan.findById(id);
+  if (!plan) {
+    throw new ApiError(404, "Subscription plan not found");
   }
   const existingPlan = await SubscriptionPlan.findOne({
     _id: { $ne: id },
@@ -109,36 +127,48 @@ const updateSubscriptionPlan = asyncHandler(async (req, res) => {
   });
 
   if (existingPlan) {
-    return res
-      .status(400)
-      .json(
-        new ApiResponse(
-          400,
-          null,
-          "A similar plan with this name or title already exists!"
-        )
-      );
+    throw new ApiError(400, "A plan with this name or title already exists");
   }
 
-  const updatedPlan = await SubscriptionPlan.findByIdAndUpdate(
-    id,
-    { name, title, description, price, maxProperties, isActive },
-    { new: true }
-  );
+  let updateData = {
+    name,
+    title,
+    description,
+    price,
+    maxProperties,
+    isActive,
+  };
 
-  if (!updatedPlan) {
-    return res
-      .status(404)
-      .json(new ApiResponse(404, null, "Subscription plan not found!"));
+  // Handle icon upload if file is present
+  if (req.file) {
+    try {
+      const s3Path = `subscription-icon/${Date.now()}_${
+        req.file.originalname
+      }`;
+      const fileUrl = await s3Service.uploadFile(req.file, s3Path);
+
+      // Delete old icon if it exists
+      if (plan.icon) {
+        await s3Service.deleteFile(plan.icon);
+      }
+      updateData.icon = fileUrl.url;
+    } catch (error) {
+      throw new ApiError(500, "Error handling plan icon upload");
+    }
   }
 
-  res
+  // Update the plan
+  const updatedPlan = await SubscriptionPlan.findByIdAndUpdate(id, updateData, {
+    new: true,
+  });
+
+  return res
     .status(200)
     .json(
       new ApiResponse(
         200,
         updatedPlan,
-        "Subscription plan updated successfully!"
+        "Subscription plan updated successfully"
       )
     );
 });

@@ -90,7 +90,8 @@ const registerUser = asyncHandler(async (req, res) => {
   if (
     createdUser.role === "dealer" ||
     createdUser.role === "agent" ||
-    createdUser.role === "builder"
+    createdUser.role === "builder"||
+    createdUser.role === "owner"
   ) {
     const freePlan = await SubscriptionPlan.findOne({
       $or: [

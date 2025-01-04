@@ -283,7 +283,7 @@ const getProperties = asyncHandler(async (req, res) => {
   })
     .populate({
       path: "planId",
-      select: "title name",
+      select: "title name icon",
     })
     .lean();
   // Create subscription map
@@ -293,6 +293,7 @@ const getProperties = asyncHandler(async (req, res) => {
       {
         title: sub.planId?.title || null,
         name: sub.planId?.name || null,
+        icon: sub.planId?.icon || null,
         expiresAt: sub.endDate,
       },
     ])
@@ -311,6 +312,7 @@ const getProperties = asyncHandler(async (req, res) => {
         ...property.owner,
       },
       tag: ownerSubscription?.title || "",
+      icon: ownerSubscription?.icon || "",
     };
   });
 

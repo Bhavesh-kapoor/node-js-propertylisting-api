@@ -619,7 +619,7 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
     "specifications.bedrooms": referenceProperty.specifications.bedrooms,
     status: referenceProperty.status,
   })
-    .populate("owner", "name email isVerified avatarUrl mobile ")
+    .populate("owner", "name email isVerified  avatarUrl mobile priorityRank ")
     .limit(Number(limit))
     .lean();
 
@@ -669,10 +669,11 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
   })
     .populate({
       path: "planId",
-      select: "title name",
+      // select: "title name icon",
     })
     .lean();
 
+  console.log("activeSubscriptions", activeSubscriptions);
   // Create subscription map for O(1) lookup
   const subscriptionMap = new Map(
     activeSubscriptions.map((sub) => [
@@ -680,6 +681,7 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
       {
         title: sub.planId?.title || null,
         name: sub.planId?.name || null,
+        icon: sub.planId?.icon || null,
         expiresAt: sub.endDate,
       },
     ])
@@ -699,6 +701,7 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
         ...property.owner,
         // subscription: ownerSubscription || null,
       },
+      icon: ownerSubscription?.icon || "",
     };
   });
 

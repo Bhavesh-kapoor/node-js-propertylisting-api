@@ -18,7 +18,7 @@ const propertyValidator = [
     .withMessage("Invalid property type!"),
   check("status")
     .optional()
-    .isIn(["For-Sale", "For-Rent", "Sold", "Rented"])
+    .isIn(["For-Sale", "For-Rent", "Sold", "Rented", "Ready-to-move"])
     .withMessage("Invalid status!"),
   check("address.fullAddress")
     .notEmpty()
@@ -27,9 +27,6 @@ const propertyValidator = [
   check("address.state").notEmpty().withMessage("State is required!"),
   check("address.pinCode").notEmpty().withMessage("Postal code is required!"),
   check("address.country").notEmpty().withMessage("Country is required!"),
-  check("specifications.landArea")
-    .notEmpty()
-    .withMessage("landArea is required!"),
 ];
 
 /*---------------------------------------------------Add a new property----------------------------------------*/
@@ -78,7 +75,7 @@ const createProperty = asyncHandler(async (req, res) => {
     videoUrl,
     owner: user._id,
   };
-  
+
   const currentDate = new Date();
 
   const activeSubscription = await SubscribedPlan.findOne({

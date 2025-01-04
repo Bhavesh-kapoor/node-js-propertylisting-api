@@ -14,12 +14,11 @@ const router = Router();
 
 router.get("/fetch-users",fetchUser)
 router.get("/get-current-user", getCurrentUser);
-router.put("/update-user", updateAccountDetails);
+router.put("/update-user/:userId?", updateAccountDetails);
 router.get("/logout", logoutUser);
 router.put("/change-current-password", changeCurrentPassword);
 router.post("/refresh-access-token", refreshAccessToken);
 router.post("/update-avatar", multerUpload.single("avatar"), changeAvatarImage);
 router.post("/get-user-list", changeAvatarImage);
-
 
 export default router;

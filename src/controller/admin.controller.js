@@ -90,7 +90,7 @@ const registerUser = asyncHandler(async (req, res) => {
   if (
     createdUser.role === "dealer" ||
     createdUser.role === "agent" ||
-    createdUser.role === "builder"||
+    createdUser.role === "builder" ||
     createdUser.role === "owner"
   ) {
     const freePlan = await SubscriptionPlan.findOne({
@@ -308,7 +308,12 @@ const loginAdmin = asyncHandler(async (req, res) => {
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
-  const { name, email, isEmailVerified, address, isActive,priorityRank } = req.body;
+  const { name, email, isEmailVerified, address, isActive, priorityRank } =
+    req.body;
+  let userId = req.user._id;
+  if (req.user.role === "admin") {
+    userId = req.params.userId;
+  }
 
   // Email verification requirement check
   if (email && !isEmailVerified) {
@@ -317,7 +322,6 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
       "Email verification is required to update email address"
     );
   }
-
   // Prepare update fields
   const updateFields = {};
   if (name) updateFields.name = name;
@@ -347,7 +351,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
   // Update the user document
   const updatedUser = await User.findByIdAndUpdate(
-    req.user._id,
+    userId,
     { $set: updateFields },
     { new: true, runValidators: true }
   ).select("-password -refreshToken");

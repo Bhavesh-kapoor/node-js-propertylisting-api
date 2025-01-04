@@ -333,6 +333,189 @@ const getProperties = asyncHandler(async (req, res) => {
     )
   );
 });
+const getPropertiesforAdmin = asyncHandler(async (req, res) => {
+  const {
+    city,
+    state,
+    country,
+    name,
+    propertyType,
+    minPrice,
+    maxPrice,
+    status,
+    amenities,
+    recommended,
+    page = 1,
+    limit = 10,
+    sortOrder = "desc",
+    isadmin = false,
+  } = req.query;
+
+  const pageNumber = parseInt(page, 10);
+  const limitNumber = parseInt(limit, 10);
+  const skip = (pageNumber - 1) * limitNumber;
+
+  const filter = {};
+
+  // Filter by city
+  if (city) {
+    filter["address.city"] = { $regex: city, $options: "i" };
+  }
+
+  // Filter by state
+  if (state) {
+    filter["address.state"] = { $regex: state, $options: "i" };
+  }
+
+  // Filter by country
+  if (country) {
+    filter["address.country"] = { $regex: country, $options: "i" };
+  }
+
+  // Filter by name
+  if (name) {
+    filter.title = { $regex: name, $options: "i" };
+  }
+
+  // Filter by property type
+  if (propertyType) {
+    filter.propertyType = propertyType;
+  }
+
+  // Filter by price range
+  if (minPrice || maxPrice) {
+    filter.price = {};
+    if (minPrice) filter.price.$gte = Number(minPrice);
+    if (maxPrice) filter.price.$lte = Number(maxPrice);
+  }
+
+  // Filter by status
+  if (status) {
+    filter.status = status;
+  }
+
+  // Filter by active properties if not admin
+  if (isadmin == false) {
+    filter.isActive = true;
+  }
+
+  // Filter by amenities
+  if (amenities) {
+    const amenitiesArray = amenities
+      .replace(/-/g, " ")
+      .split(",")
+      .map((item) => item.trim());
+    filter.amenities = { $all: amenitiesArray };
+  }
+
+  // Fetch properties with aggregation
+  const properties = await Property.aggregate([
+    { $match: filter },
+    {
+      $lookup: {
+        from: "users", // The users collection name
+        localField: "owner",
+        foreignField: "_id",
+        as: "ownerDetails",
+      },
+    },
+    { $unwind: "$ownerDetails" },
+    {
+      $addFields: {
+        owner: {
+          _id: { $ifNull: ["$ownerDetails._id", null] },
+          name: { $ifNull: ["$ownerDetails.name", null] },
+          email: { $ifNull: ["$ownerDetails.email", null] },
+          isVerified: { $ifNull: ["$ownerDetails.isVerified", null] },
+          avatarUrl: { $ifNull: ["$ownerDetails.avatarUrl", null] },
+          priorityRank: { $ifNull: ["$ownerDetails.priorityRank", null] },
+          mobile: { $ifNull: ["$ownerDetails.mobile", null] },
+          role: { $ifNull: ["$ownerDetails.role", null] },
+          isActive: { $ifNull: ["$ownerDetails.isActive", null] },
+        },
+      },
+    },
+    {
+      $sort: {
+        createdAt: sortOrder === "asc" ? 1 : -1, // Only sort by createdAt
+      },
+    },
+    { $skip: skip },
+    { $limit: limitNumber },
+  ]);
+
+  // Filter properties for recommended flag
+  const filteredProperties =
+    recommended === "true"
+      ? properties.filter((property) => property.owner.isVerified)
+      : properties;
+
+  // Get unique owner IDs
+  const ownerIds = [
+    ...new Set(filteredProperties.map((prop) => prop.owner._id)),
+  ];
+
+  // Fetch active subscriptions
+  const activeSubscriptions = await SubscribedPlan.find({
+    userId: { $in: ownerIds },
+    isActive: true,
+    endDate: { $gt: new Date() },
+  })
+    .populate({
+      path: "planId",
+      select: "title name icon",
+    })
+    .lean();
+
+  // Create subscription map
+  const subscriptionMap = new Map(
+    activeSubscriptions.map((sub) => [
+      sub.userId.toString(),
+      {
+        title: sub.planId?.title || null,
+        name: sub.planId?.name || null,
+        icon: sub.planId?.icon || null,
+        expiresAt: sub.endDate,
+      },
+    ])
+  );
+
+  // Add subscription details
+  const propertiesWithTags = filteredProperties.map((property) => {
+    const { ownerDetails, ...cleanedProperty } = property;
+    const ownerSubscription = subscriptionMap.get(
+      property.owner._id.toString()
+    );
+
+    return {
+      ...cleanedProperty,
+      owner: {
+        ...property.owner,
+      },
+      tag: ownerSubscription?.title || "",
+      icon: ownerSubscription?.icon || "",
+    };
+  });
+
+  // Count total properties
+  const totalCount = await Property.countDocuments(filter);
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        result: propertiesWithTags,
+        pagination: {
+          totalPages: Math.ceil(totalCount / limitNumber),
+          currentPage: pageNumber,
+          totalItems: totalCount,
+          itemsPerPage: limitNumber,
+        },
+      },
+      "Properties fetched successfully."
+    )
+  );
+});
 
 /*--------------------------------------------Get a single property----------------------------------------*/
 const getProperty = asyncHandler(async (req, res) => {
@@ -346,7 +529,6 @@ const getProperty = asyncHandler(async (req, res) => {
   if (!property) {
     throw new ApiError(404, "Property not found");
   }
-
   // Find the active subscription plan for the property owner
   const activeSubscription = await SubscribedPlan.findOne({
     userId: property.owner._id,
@@ -430,18 +612,147 @@ const getPropertyBySlug = asyncHandler(async (req, res) => {
       )
     );
 });
+// const listedProperties = asyncHandler(async (req, res) => {
+//   const user = req.user;
+//   const { page, limit } = req.query;
+//   const pageNumber = parseInt(page, 10);
+//   const limitNumber = parseInt(limit, 10);
+//   const skip = (pageNumber - 1) * limitNumber;
+
+//   const filter = { owner: user._id };
+//   const properties = await Property.aggregate([
+//     { $match: filter },
+//     {
+//       $lookup: {
+//         from: "users", // The users collection name
+//         localField: "owner",
+//         foreignField: "_id",
+//         as: "ownerDetails",
+//       },
+//     },
+//     { $unwind: "$ownerDetails" },
+//     {
+//       $addFields: {
+//         owner: {
+//           _id: { $ifNull: ["$ownerDetails._id", null] },
+//           name: { $ifNull: ["$ownerDetails.name", null] },
+//           email: { $ifNull: ["$ownerDetails.email", null] },
+//           isVerified: { $ifNull: ["$ownerDetails.isVerified", null] },
+//           avatarUrl: { $ifNull: ["$ownerDetails.avatarUrl", null] },
+//           priorityRank: { $ifNull: ["$ownerDetails.priorityRank", null] },
+//           mobile: { $ifNull: ["$ownerDetails.mobile", null] },
+//           role: { $ifNull: ["$ownerDetails.role", null] },
+//           isActive: { $ifNull: ["$ownerDetails.isActive", null] },
+//         },
+//       },
+//     },
+//     {
+//       $sort: {
+//         createdAt: sortOrder === "asc" ? 1 : -1, 
+//       },
+//     },
+//     { $skip: skip },
+//     { $limit: limitNumber },
+//   ]);
+//   const activeSubscriptions = await SubscribedPlan.find({
+//     userId: req.user._id,
+//     isActive: true,
+//     endDate: { $gt: new Date() },
+//   })
+//     .populate({
+//       path: "planId",
+//       select: "title name icon",
+//     })
+//     .lean();
+
+//   if (!properties) {
+//     throw new ApiError(404, "Properties not found");
+//   }
+//   res
+//     .status(200)
+//     .json(new ApiResponse(200, properties, "Properties fetched successfully."));
+// });
 const listedProperties = asyncHandler(async (req, res) => {
   const user = req.user;
+  const { page = 1, limit = 10, sortOrder = "desc" } = req.query;
 
-  const properties = await Property.find({ owner: user._id });
+  const pageNumber = parseInt(page, 10);
+  const limitNumber = parseInt(limit, 10);
+  const skip = (pageNumber - 1) * limitNumber;
 
-  if (!properties) {
+  const filter = { owner: user._id };
+
+  // Fetch properties
+  const properties = await Property.aggregate([
+    { $match: filter },
+    {
+      $lookup: {
+        from: "users", // The users collection name
+        localField: "owner",
+        foreignField: "_id",
+        as: "ownerDetails",
+      },
+    },
+    { $unwind: "$ownerDetails" },
+    {
+      $addFields: {
+        owner: {
+          _id: { $ifNull: ["$ownerDetails._id", null] },
+          name: { $ifNull: ["$ownerDetails.name", null] },
+          email: { $ifNull: ["$ownerDetails.email", null] },
+          isVerified: { $ifNull: ["$ownerDetails.isVerified", null] },
+          avatarUrl: { $ifNull: ["$ownerDetails.avatarUrl", null] },
+          priorityRank: { $ifNull: ["$ownerDetails.priorityRank", null] },
+          mobile: { $ifNull: ["$ownerDetails.mobile", null] },
+          role: { $ifNull: ["$ownerDetails.role", null] },
+          isActive: { $ifNull: ["$ownerDetails.isActive", null] },
+        },
+      },
+    },
+    {
+      $sort: {
+        createdAt: sortOrder === "asc" ? 1 : -1,
+      },
+    },
+    { $skip: skip },
+    { $limit: limitNumber },
+  ]);
+
+  // Fetch active subscriptions for the user
+  const activeSubscriptions = await SubscribedPlan.find({
+    userId: req.user._id,
+    isActive: true,
+    endDate: { $gt: new Date() },
+  })
+    .populate({
+      path: "planId",
+      select: "title name icon",
+    })
+    .lean();
+
+  // Build subscription map
+  const subscription = activeSubscriptions.length > 0 ? activeSubscriptions[0] : null;
+  const tag = subscription?.planId?.title || "";
+  const icon = subscription?.planId?.icon || "";
+
+  // Add tag and icon to each property
+  const propertiesWithTags = properties.map((property) => ({
+    ...property,
+    tag,
+    icon,
+  }));
+
+  if (!propertiesWithTags.length) {
     throw new ApiError(404, "Properties not found");
   }
 
-  res
-    .status(200)
-    .json(new ApiResponse(200, properties, "Properties fetched successfully."));
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      propertiesWithTags,
+      "Properties fetched successfully."
+    )
+  );
 });
 
 const updateProperty = asyncHandler(async (req, res) => {
@@ -833,4 +1144,5 @@ export {
   getPropertyBySlug,
   getFilterValues,
   getActivePropertyCities,
+  getPropertiesforAdmin,
 };

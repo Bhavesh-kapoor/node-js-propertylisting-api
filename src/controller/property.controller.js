@@ -230,21 +230,36 @@ const getProperties = asyncHandler(async (req, res) => {
     {
       $addFields: {
         owner: {
-          _id: "$ownerDetails._id",
-          name: "$ownerDetails.name",
-          email: "$ownerDetails.email",
-          isVerified: "$ownerDetails.isVerified",
-          avatarUrl: "$ownerDetails.avatarUrl",
-          mobile: "$ownerDetails.mobile",
+          _id: { $ifNull: ["$ownerDetails._id", null] },
+          name: { $ifNull: ["$ownerDetails.name", null] },
+          email: { $ifNull: ["$ownerDetails.email", null] },
+          isVerified: { $ifNull: ["$ownerDetails.isVerified", null] },
+          avatarUrl: { $ifNull: ["$ownerDetails.avatarUrl", null] },
+          priorityRank: { $ifNull: ["$ownerDetails.priorityRank", null] },
+          mobile: { $ifNull: ["$ownerDetails.mobile", null] },
+          role: { $ifNull: ["$ownerDetails.role", null] },
+          isActive: { $ifNull: ["$ownerDetails.isActive", null] },
         },
         ownerName: "$ownerDetails.name",
         isVerified: "$ownerDetails.isVerified",
       },
     },
     {
+      $addFields: {
+        sortPriorityRank: {
+          $cond: {
+            if: { $ifNull: ["$ownerDetails.priorityRank", false] },
+            then: "$ownerDetails.priorityRank",
+            else: Number.MAX_SAFE_INTEGER,
+          },
+        },
+      },
+    },
+    {
       $sort: {
-        "ownerDetails.isVerified": -1, // Sort by verification status first
-        [sortBy]: sortOrder === "asc" ? 1 : -1, // Then by the requested sort field
+        "ownerDetails.isVerified": -1,
+        sortPriorityRank: 1,
+        [sortBy]: sortOrder === "asc" ? 1 : -1,
       },
     },
     { $skip: skip },
@@ -602,7 +617,7 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
     "specifications.bedrooms": referenceProperty.specifications.bedrooms,
     status: referenceProperty.status,
   })
-    .populate("owner", "name email isVerified avatarUrl mobile")
+    .populate("owner", "name email isVerified avatarUrl mobile ")
     .limit(Number(limit))
     .lean();
 
@@ -742,7 +757,9 @@ const calculateSimilarityScore = (reference, property) => {
 };
 
 const getFilterValues = asyncHandler(async (req, res) => {
-  const propertyTypes = await Property.distinct("propertyType", { isActive: true });
+  const propertyTypes = await Property.distinct("propertyType", {
+    isActive: true,
+  });
 
   const countriesWithStates = await Property.aggregate([
     {
@@ -788,7 +805,6 @@ const getFilterValues = asyncHandler(async (req, res) => {
     )
   );
 });
-
 
 export {
   createProperty,

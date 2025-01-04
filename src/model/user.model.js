@@ -94,6 +94,9 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    priorityRank:{
+      type: Number,
+    }
   },
   { timestamps: true }
 );

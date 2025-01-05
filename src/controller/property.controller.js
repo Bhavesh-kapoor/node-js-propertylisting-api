@@ -216,6 +216,8 @@ const getProperties = asyncHandler(async (req, res) => {
   // Use aggregation pipeline for better sorting control
   const properties = await Property.aggregate([
     { $match: filter },
+    { $skip: skip },
+    { $limit: limitNumber },
     {
       $lookup: {
         from: "users", // The users collection name
@@ -227,6 +229,64 @@ const getProperties = asyncHandler(async (req, res) => {
     { $unwind: "$ownerDetails" },
     {
       $addFields: {
+        sortPriorityRank: {
+          $cond: {
+            if: { $ifNull: ["$ownerDetails.priorityRank", false] },
+            then: "$ownerDetails.priorityRank",
+            else: Number.MAX_SAFE_INTEGER,
+          },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "subscribedplans", // The users collection name
+        localField: "ownerDetails._id",
+        foreignField: "userId",
+        pipeline: [
+          {
+            $match: { isActive: true },
+          },
+          {
+            $lookup: {
+              from: "subscriptionplans", // The users collection name
+              localField: "planId",
+              foreignField: "_id",
+              as: "subscriptionplans",
+            },
+          },
+          { $unwind: "$subscriptionplans" },
+        ],
+        as: "subscribedplans",
+      },
+    },
+    { $unwind:{ path:"$subscribedplans" ,preserveNullAndEmptyArrays:true}},
+    {
+      $sort: {
+        "subscribedplans.subscriptionplans.price.Monthly": -1,
+        "ownerDetails.isVerified": -1,
+        sortPriorityRank: 1,
+        [sortBy]: sortOrder === "asc" ? 1 : -1,
+      },
+    },
+    {
+      $project: {
+        title: 1,
+        description: 1,
+        address: 1,
+        price: 1,
+        propertyType: 1,
+        status: 1,
+        amenities: 1,
+        specifications: 1,
+        images: 1,
+        isActive: 1,
+        slug: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        sortPriorityRank: 1,
+        tag: 1,
+        icon: 1,
         owner: {
           _id: { $ifNull: ["$ownerDetails._id", null] },
           name: { $ifNull: ["$ownerDetails.name", null] },
@@ -242,26 +302,6 @@ const getProperties = asyncHandler(async (req, res) => {
         isVerified: "$ownerDetails.isVerified",
       },
     },
-    {
-      $addFields: {
-        sortPriorityRank: {
-          $cond: {
-            if: { $ifNull: ["$ownerDetails.priorityRank", false] },
-            then: "$ownerDetails.priorityRank",
-            else: Number.MAX_SAFE_INTEGER,
-          },
-        },
-      },
-    },
-    {
-      $sort: {
-        "ownerDetails.isVerified": -1,
-        sortPriorityRank: 1,
-        [sortBy]: sortOrder === "asc" ? 1 : -1,
-      },
-    },
-    { $skip: skip },
-    { $limit: limitNumber },
   ]);
 
   // Filter properties for recommended flag
@@ -557,7 +597,6 @@ const updateProperty = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, property, "Property updated successfully"));
 });
-
 /*-------------------------------------------------- Delete Property--------------------------------*/
 const deleteProperty = asyncHandler(async (req, res) => {
   const { id } = req.params;

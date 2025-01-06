@@ -192,6 +192,7 @@ const getProperties = asyncHandler(async (req, res) => {
     if (maxPrice) filter.price.$lte = Number(maxPrice);
   }
   if (status) filter.status = status;
+  if (status) filter.propertyType = status;
 
   filter.isActive = true;
 

@@ -150,6 +150,7 @@ const getProperties = asyncHandler(async (req, res) => {
     status,
     amenities,
     recommended,
+    isActive = true,
     page = 1,
     limit = 10,
     sortBy = "createdAt",
@@ -162,6 +163,11 @@ const getProperties = asyncHandler(async (req, res) => {
   const skip = (pageNumber - 1) * limitNumber;
 
   const filter = {};
+  let sortings = {
+    "subscribedplans.subscriptionplans.price.Monthly": -1,
+    "ownerDetails.isVerified": -1,
+    sortPriorityRank: 1,
+  };
 
   // Filter by city
   if (city) {
@@ -200,10 +206,15 @@ const getProperties = asyncHandler(async (req, res) => {
     filter.status = status;
   }
 
-  if (isadmin == false) {
-    filter.isActive = true;
-  }
+  filter.isActive = JSON.parse(isActive)
+    ? JSON.parse(isActive)
+    : { $ne: !JSON.parse(isActive) };
 
+  if (JSON.parse(isadmin) == false) {
+    filter.isActive = true;
+  } else if (JSON.parse(isadmin)) {
+    sortings = {};
+  }
   // Filter by amenities
   if (amenities) {
     const amenitiesArray = amenities
@@ -216,8 +227,6 @@ const getProperties = asyncHandler(async (req, res) => {
   // Use aggregation pipeline for better sorting control
   const properties = await Property.aggregate([
     { $match: filter },
-    { $skip: skip },
-    { $limit: limitNumber },
     {
       $lookup: {
         from: "users", // The users collection name
@@ -260,15 +269,15 @@ const getProperties = asyncHandler(async (req, res) => {
         as: "subscribedplans",
       },
     },
-    { $unwind:{ path:"$subscribedplans" ,preserveNullAndEmptyArrays:true}},
+    { $unwind: { path: "$subscribedplans", preserveNullAndEmptyArrays: true } },
     {
       $sort: {
-        "subscribedplans.subscriptionplans.price.Monthly": -1,
-        "ownerDetails.isVerified": -1,
-        sortPriorityRank: 1,
-        [sortBy]: sortOrder === "asc" ? 1 : -1,
+        ...sortings,
+        [sortBy]: sortOrder === "desc" ? -1 : 1,
       },
     },
+    { $skip: skip },
+    { $limit: limitNumber },
     {
       $project: {
         title: 1,
@@ -647,51 +656,113 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
   };
 
   // Primary matching criteria
-  let similarProperties = await Property.find({
-    _id: { $ne: propertyId },
-    "address.country": referenceProperty.address.country,
-    propertyType: referenceProperty.propertyType,
-    price: { $gte: priceRange.min, $lte: priceRange.max },
-    "specifications.area": { $gte: areaRange.min, $lte: areaRange.max },
-    "specifications.bedrooms": referenceProperty.specifications.bedrooms,
-    status: referenceProperty.status,
-  })
-    .populate("owner", "name email isVerified  avatarUrl mobile priorityRank ")
-    .limit(Number(limit))
-    .lean();
-
-  // Relaxed criteria if needed
-  if (similarProperties.length < limit) {
-    const relaxedProperties = await Property.find({
-      _id: { $ne: propertyId },
-      $or: [
-        { "address.city": referenceProperty.address.city },
-        { "address.country": referenceProperty.address.country },
-      ],
-      propertyType: referenceProperty.propertyType,
-      status: referenceProperty.status,
-      _id: { $nin: similarProperties.map((p) => p._id) },
-    })
-      .populate("owner", "name email isVerified avatarUrl mobile")
-      .limit(Number(limit) - similarProperties.length)
-      .lean();
-
-    similarProperties = [...similarProperties, ...relaxedProperties];
-  }
-
-  // Final country-based fallback
-  if (similarProperties.length < limit) {
-    const countryProperties = await Property.find({
-      _id: { $ne: propertyId },
-      "address.country": referenceProperty.address.country,
-      _id: { $nin: similarProperties.map((p) => p._id) },
-    })
-      .populate("owner", "name email isVerified avatarUrl mobile")
-      .limit(Number(limit) - similarProperties.length)
-      .lean();
-
-    similarProperties = [...similarProperties, ...countryProperties];
-  }
+  let similarProperties = await Property.aggregate([
+    {
+      $match: {
+        _id: { $ne: referenceProperty._id },
+        "address.country": referenceProperty.address.country,
+        $or: [
+          { propertyType: referenceProperty.propertyType },
+          { status: referenceProperty.status },
+          { price: { $gte: priceRange.min, $lte: priceRange.max } },
+          {
+            "specifications.area": { $gte: areaRange.min, $lte: areaRange.max },
+          },
+          {
+            "specifications.bedrooms":
+              referenceProperty.specifications.bedrooms,
+          },
+          {
+            "address.city": referenceProperty.address.city,
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "users", // The users collection name
+        localField: "owner",
+        foreignField: "_id",
+        as: "ownerDetails",
+      },
+    },
+    { $unwind: "$ownerDetails" },
+    {
+      $addFields: {
+        sortPriorityRank: {
+          $cond: {
+            if: { $ifNull: ["$ownerDetails.priorityRank", false] },
+            then: "$ownerDetails.priorityRank",
+            else: Number.MAX_SAFE_INTEGER,
+          },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "subscribedplans", // The users collection name
+        localField: "ownerDetails._id",
+        foreignField: "userId",
+        pipeline: [
+          {
+            $match: { isActive: true },
+          },
+          {
+            $lookup: {
+              from: "subscriptionplans", // The users collection name
+              localField: "planId",
+              foreignField: "_id",
+              as: "subscriptionplans",
+            },
+          },
+          { $unwind: "$subscriptionplans" },
+        ],
+        as: "subscribedplans",
+      },
+    },
+    { $unwind: { path: "$subscribedplans", preserveNullAndEmptyArrays: true } },
+    {
+      $sort: {
+        "subscribedplans.subscriptionplans.price.Monthly": -1,
+        "ownerDetails.isVerified": -1,
+        sortPriorityRank: 1,
+      },
+    },
+    { $limit: Number(limit) },
+    {
+      $project: {
+        title: 1,
+        description: 1,
+        address: 1,
+        price: 1,
+        propertyType: 1,
+        status: 1,
+        amenities: 1,
+        specifications: 1,
+        images: 1,
+        isActive: 1,
+        slug: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        sortPriorityRank: 1,
+        tag: 1,
+        icon: 1,
+        owner: {
+          _id: { $ifNull: ["$ownerDetails._id", null] },
+          name: { $ifNull: ["$ownerDetails.name", null] },
+          email: { $ifNull: ["$ownerDetails.email", null] },
+          isVerified: { $ifNull: ["$ownerDetails.isVerified", null] },
+          avatarUrl: { $ifNull: ["$ownerDetails.avatarUrl", null] },
+          priorityRank: { $ifNull: ["$ownerDetails.priorityRank", null] },
+          mobile: { $ifNull: ["$ownerDetails.mobile", null] },
+          role: { $ifNull: ["$ownerDetails.role", null] },
+          isActive: { $ifNull: ["$ownerDetails.isActive", null] },
+        },
+        ownerName: "$ownerDetails.name",
+        isVerified: "$ownerDetails.isVerified",
+      },
+    },
+  ]);
 
   // Get all unique owner IDs
   const ownerIds = [

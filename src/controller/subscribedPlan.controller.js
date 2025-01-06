@@ -167,6 +167,7 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
     planId: planId,
     listingOffered: listingOffered,
     endDate: endDate,
+    duration,
   });
 
   return res.status(201).json(

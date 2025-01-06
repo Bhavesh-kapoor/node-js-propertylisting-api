@@ -41,6 +41,12 @@ const SubscribedPlanSchema = new mongoose.Schema(
       enum: ["pending", "active", "inactive","expired"],
       default: "pending",
     },
+    duration:{
+      type: String,
+      enum: ["Monthly","Quarterly","Yearly"],
+      required: true,
+      trim: true,
+    }
   },
   { timestamps: true }
 );

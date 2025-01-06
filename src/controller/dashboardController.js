@@ -2,6 +2,7 @@ import ApiError from "../utils/ApiError.js";
 import { User } from "../model/user.model.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import { SubscribedPlan } from "../model/subscribedPlan.model.js";
 
 import {
   endOfDay,
@@ -43,7 +44,7 @@ const getOverview = asyncHandler(async (req, res) => {
     dateStart = now;
     dateEnd = endOfMonth(now);
   }
-  const users = await User.find({ role: "dealer" })
+  const users = await User.find({ isActive: true, role: { $ne: "admin" } })
     .sort({ createdAt: -1 })
     .limit(limitNumber)
     .select("name avatarUrl email mobile role");
@@ -60,6 +61,15 @@ const getOverview = asyncHandler(async (req, res) => {
     },
     { $unwind: { path: "$userData", preserveNullAndEmptyArrays: true } },
     {
+      $lookup: {
+        from: "subscriptionplans",
+        localField: "planId",
+        foreignField: "_id",
+        as: "subscriptionplans",
+      },
+    },
+    { $unwind: { path: "$subscriptionplans", preserveNullAndEmptyArrays: true } },
+    {
       $project: {
         amount: 1,
         createdAt: 1,
@@ -70,7 +80,7 @@ const getOverview = asyncHandler(async (req, res) => {
     { $sort: { createdAt: -1 } },
     { $limit: limitNumber },
   ];
-  const transactions = await Transaction.aggregate(pipeline).exec();
+  const transactions = await SubscribedPlan.aggregate(pipeline).exec();
 
   return res.status(200).json(
     new ApiResponse(

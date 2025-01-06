@@ -58,7 +58,6 @@ const createProperty = asyncHandler(async (req, res) => {
       return res.status(404).json(new ApiResponse(404, null, "User not found"));
     }
   }
-
   if (!user.isActive) {
     return res
       .status(200)

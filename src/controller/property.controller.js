@@ -49,10 +49,11 @@ const createProperty = asyncHandler(async (req, res) => {
     amenities,
     specifications,
     videoUrl,
+    ownerId
   } = req.body;
   let user = req.user;
   if (user.role === "admin") {
-    user = await User.findById(req.params.userId);
+    user = await User.findById(ownerId);
     if (!user) {
       return res.status(404).json(new ApiResponse(404, null, "User not found"));
     }

@@ -88,10 +88,10 @@ const createProperty = asyncHandler(async (req, res) => {
 
   if (!activeSubscription) {
     return res
-      .status(400)
+      .status(200)
       .json(
         new ApiResponse(
-          400,
+          200,
           null,
           "No active subscription found! please upgrade the plan"
         )

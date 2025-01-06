@@ -27,10 +27,4 @@ const SeoSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-SeoSchema.pre("save", function (next) {
-  if (this.isNew) {
-    this.slug = slugify(this.title, { lower: true, strict: true });
-  }
-  next();
-});
 export const Seo = mongoose.model("Seo", SeoSchema);

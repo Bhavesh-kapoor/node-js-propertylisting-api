@@ -177,52 +177,8 @@ const propertySchema = new mongoose.Schema(
         type: Number,
         min: 0,
       },
-      parkingSpaces: {
-        type: Number,
-        min: 0,
-      },
       yearBuilt: {
         type: Number,
-      },
-      //   facingDirection: {
-      //     type: String,
-      //     enum: [
-      //       "North",
-      //       "South",
-      //       "East",
-      //       "West",
-      //       "North-East",
-      //       "North-West",
-      //       "South-East",
-      //       "South-West",
-      //     ],
-      //   },
-      //   furnishingStatus: {
-      //     type: String,
-      //     enum: ["Furnished", "Semi-Furnished", "Unfurnished"],
-      //     default: "Unfurnished",
-      //   },
-      powerBackup: {
-        type: Boolean,
-      },
-      waterSupply: {
-        type: String,
-        enum: ["Municipal", "Borewell", "Both"],
-      },
-      flooringType: {
-        type: String,
-        enum: [
-          "Marble",
-          "Wooden",
-          "Tile",
-          "Granite",
-          "Cement",
-          "Vinyl",
-          "Carpet",
-        ],
-      },
-      servantQuarters: {
-        type: Boolean,
       },
     },
     video: {

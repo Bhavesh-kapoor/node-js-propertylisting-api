@@ -207,6 +207,7 @@ const getReviewById = asyncHandler(async (req, res) => {
       200,
       {
         reviewId: review._id,
+        _id: review._id,
         userName: review.userId?.name || "Anonymous",
         propertyId: review.propertyId,
         stars: review.stars,

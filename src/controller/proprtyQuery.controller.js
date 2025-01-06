@@ -120,6 +120,8 @@ const getQueries = asyncHandler(async (req, res) => {
     endDate,
     startDate,
     propertyId,
+    searchkey,
+    search = "",
     sort = "createdAt",
     order = "desc",
   } = req.query;
@@ -135,6 +137,9 @@ const getQueries = asyncHandler(async (req, res) => {
 
   if (req.user.role !== "admin") {
     matchStage.propertyOwner = new mongoose.Types.ObjectId(req.user._id);
+  }
+  if (search && searchkey) {
+    matchStage[searchkey] = { $regex: search, $options: "i" };
   }
 
   const sortOrder = order === "desc" ? -1 : 1;

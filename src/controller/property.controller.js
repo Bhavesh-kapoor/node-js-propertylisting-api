@@ -306,10 +306,11 @@ const getProperties = asyncHandler(async (req, res) => {
           role: { $ifNull: ["$ownerDetails.role", null] },
           isActive: { $ifNull: ["$ownerDetails.isActive", null] },
         },
+        ownerName: "$ownerDetails.name",
+        isVerified: "$ownerDetails.isVerified",
       },
-    },
+    }
   ];
-
   // Execute both pipelines in parallel
   const [countResult, properties] = await Promise.all([
     Property.aggregate(countPipeline),

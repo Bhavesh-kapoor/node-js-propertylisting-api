@@ -5,6 +5,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiError.js";
 import { check, validationResult } from "express-validator";
 import { SubscribedPlan } from "../model/subscribedPlan.model.js";
+import { User } from "../model/user.model.js";
 import { addYears } from "date-fns";
 
 const s3Service = new s3ServiceWithProgress();
@@ -49,7 +50,13 @@ const createProperty = asyncHandler(async (req, res) => {
     specifications,
     videoUrl,
   } = req.body;
-  const user = req.user;
+  let user = req.user;
+  if (user.role === "admin") {
+    user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json(new ApiResponse(404, null, "User not found"));
+    }
+  }
 
   if (!user.isActive) {
     return res
@@ -504,7 +511,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     status,
     features,
     specifications,
-    owner,
+    amenities,
     images,
     videoUrl,
     isActive,
@@ -528,6 +535,7 @@ const updateProperty = asyncHandler(async (req, res) => {
   if (owner) property.owner = owner;
   if (videoUrl) property.videoUrl = videoUrl;
   if (isActive) property.isActive = isActive;
+  if (amenities) property.amenities = amenities;
 
   if (address) {
     property.address = {
@@ -599,7 +607,6 @@ const updateProperty = asyncHandler(async (req, res) => {
   } else if (videoUrl) {
     property.video = videoUrl;
   }
-
   await property.save();
 
   res

@@ -514,6 +514,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     amenities,
     images,
     videoUrl,
+    owner,
     isActive,
   } = req.body;
 

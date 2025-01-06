@@ -117,13 +117,18 @@ const getQueries = asyncHandler(async (req, res) => {
     page = 1,
     limit = 10,
     status,
+    endDate,
+    startDate,
     propertyId,
     sort = "createdAt",
     order = "desc",
   } = req.query;
-
   const matchStage = {};
-
+  if (startDate || endDate) {
+    matchStage.createdAt = {};
+    if (startDate) matchStage.createdAt.$gte = new Date(startDate);
+    if (endDate) matchStage.createdAt.$lte = new Date(endDate);
+  }
   if (status) matchStage.status = status;
   if (propertyId && isValidObjectId(propertyId))
     matchStage.propertyId = new mongoose.Types.ObjectId(propertyId);

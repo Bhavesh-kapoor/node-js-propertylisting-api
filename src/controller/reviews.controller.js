@@ -4,6 +4,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import s3ServiceWithProgress from "../config/awsS3.config.js";
 import mongoose from "mongoose";
+import { getPipeline } from "../utils/helper.js";
 
 // Initialize S3 service once
 const s3Service = new s3ServiceWithProgress();

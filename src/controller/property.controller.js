@@ -178,56 +178,29 @@ const getProperties = asyncHandler(async (req, res) => {
     sortPriorityRank: 1,
   };
 
-  // Filter by city
-  if (city) {
-    filter["address.city"] = { $regex: city, $options: "i" };
-  }
-
-  // Filter by state
-  if (state) {
-    filter["address.state"] = { $regex: state, $options: "i" };
-  }
-
-  // Filter by country
-  if (country) {
-    filter["address.country"] = { $regex: country, $options: "i" };
-  }
-
-  // Filter by name
-  if (name) {
-    filter.title = { $regex: name, $options: "i" };
-  }
-
-  // Filter by property type
-  if (propertyType) {
-    filter.propertyType = propertyType;
-  }
-
-  // Filter by price range
+  // Build filter conditions
+  if (city) filter["address.city"] = { $regex: city, $options: "i" };
+  if (state) filter["address.state"] = { $regex: state, $options: "i" };
+  if (country) filter["address.country"] = { $regex: country, $options: "i" };
+  if (name) filter.title = { $regex: name, $options: "i" };
+  if (propertyType) filter.propertyType = propertyType;
   if (minPrice || maxPrice) {
     filter.price = {};
     if (minPrice) filter.price.$gte = Number(minPrice);
     if (maxPrice) filter.price.$lte = Number(maxPrice);
   }
-
-  // Filter by status
-  if (status) {
-    filter.status = status;
-  }
+  if (status) filter.status = status;
 
   filter.isActive = true;
 
   if (isadmin === "true") {
-    isActive === "false"
-      ? (filter.isActive = false)
-      : isActive === "true"
-      ? (filter.isActive = true)
-      : delete filter.isActive;
-
+    if (isActive === "false") filter.isActive = false;
+    else if (isActive === "true") filter.isActive = true;
+    else delete filter.isActive;
+    
     sortings = {};
   }
 
-  // Filter by amenities
   if (amenities) {
     const amenitiesArray = amenities
       .replace(/-/g, " ")
@@ -235,13 +208,13 @@ const getProperties = asyncHandler(async (req, res) => {
       .map((item) => item.trim());
     filter.amenities = { $all: amenitiesArray };
   }
-  // Use aggregation pipeline for better sorting control
 
-  const pipeline = [
+  // Create base pipeline for both count and data fetch
+  const basePipeline = [
     { $match: filter },
     {
       $lookup: {
-        from: "users", // The users collection name
+        from: "users",
         localField: "owner",
         foreignField: "_id",
         as: "ownerDetails",
@@ -261,16 +234,14 @@ const getProperties = asyncHandler(async (req, res) => {
     },
     {
       $lookup: {
-        from: "subscribedplans", // The users collection name
+        from: "subscribedplans",
         localField: "ownerDetails._id",
         foreignField: "userId",
         pipeline: [
-          {
-            $match: { isActive: true },
-          },
+          { $match: { isActive: true } },
           {
             $lookup: {
-              from: "subscriptionplans", // The users collection name
+              from: "subscriptionplans",
               localField: "planId",
               foreignField: "_id",
               as: "subscriptionplans",
@@ -282,6 +253,22 @@ const getProperties = asyncHandler(async (req, res) => {
       },
     },
     { $unwind: { path: "$subscribedplans", preserveNullAndEmptyArrays: true } },
+  ];
+
+  // Add recommended filter if needed
+  if (recommended === "true") {
+    basePipeline.push({ $match: { "ownerDetails.isVerified": true } });
+  }
+
+  // Create count pipeline
+  const countPipeline = [
+    ...basePipeline,
+    { $count: "totalCount" }
+  ];
+
+  // Create data pipeline
+  const dataPipeline = [
+    ...basePipeline,
     {
       $sort: {
         ...sortings,
@@ -319,24 +306,20 @@ const getProperties = asyncHandler(async (req, res) => {
           role: { $ifNull: ["$ownerDetails.role", null] },
           isActive: { $ifNull: ["$ownerDetails.isActive", null] },
         },
-        ownerName: "$ownerDetails.name",
-        isVerified: "$ownerDetails.isVerified",
       },
     },
   ];
 
-  const properties = await Property.aggregate(pipeline);
+  // Execute both pipelines in parallel
+  const [countResult, properties] = await Promise.all([
+    Property.aggregate(countPipeline),
+    Property.aggregate(dataPipeline),
+  ]);
 
-  // Filter properties for recommended flag
-  const filteredProperties =
-    recommended === "true"
-      ? properties.filter((property) => property.owner.isVerified)
-      : properties;
-  // Get unique owner IDs
-  const ownerIds = [
-    ...new Set(filteredProperties.map((prop) => prop.owner._id)),
-  ];
-  // Fetch active subscriptions
+  const totalCount = countResult[0]?.totalCount || 0;
+
+  // Fetch and map subscriptions
+  const ownerIds = [...new Set(properties.map((prop) => prop.owner._id))];
   const activeSubscriptions = await SubscribedPlan.find({
     userId: { $in: ownerIds },
     isActive: true,
@@ -347,7 +330,7 @@ const getProperties = asyncHandler(async (req, res) => {
       select: "title name icon",
     })
     .lean();
-  // Create subscription map
+
   const subscriptionMap = new Map(
     activeSubscriptions.map((sub) => [
       sub.userId.toString(),
@@ -360,25 +343,14 @@ const getProperties = asyncHandler(async (req, res) => {
     ])
   );
 
-  // Add subscription details
-  const propertiesWithTags = filteredProperties.map((property) => {
-    const { ownerDetails, ...cleanedProperty } = property;
-    const ownerSubscription = subscriptionMap.get(
-      property.owner._id.toString()
-    );
-
+  const propertiesWithTags = properties.map((property) => {
+    const ownerSubscription = subscriptionMap.get(property.owner._id.toString());
     return {
-      ...cleanedProperty,
-      owner: {
-        ...property.owner,
-      },
+      ...property,
       tag: ownerSubscription?.title || "",
       icon: ownerSubscription?.icon || "",
     };
   });
-
-  // Count total properties
-  const totalCount = await Property.countDocuments(filter);
 
   res.status(200).json(
     new ApiResponse(

@@ -306,5 +306,4 @@ const getTransactionsByMonth = asyncHandler(async (req, res) => {
   }
 });
 
-
 export { getOverview, getTransactionsByMonth, getOverviewByRevenue };

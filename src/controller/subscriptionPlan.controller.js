@@ -79,9 +79,7 @@ const createSubscriptionPlan = asyncHandler(async (req, res) => {
   }
   let icon = "";
   if (req.file) {
-    const s3Path = `subscription-icon/${Date.now()}_${
-      req.file.originalname
-    }`;
+    const s3Path = `subscription-icon/${Date.now()}_${req.file.originalname}`;
     const fileUrl = await s3Service.uploadFile(req.file, s3Path);
     icon = fileUrl.url;
   }
@@ -142,9 +140,7 @@ const updateSubscriptionPlan = asyncHandler(async (req, res) => {
   // Handle icon upload if file is present
   if (req.file) {
     try {
-      const s3Path = `subscription-icon/${Date.now()}_${
-        req.file.originalname
-      }`;
+      const s3Path = `subscription-icon/${Date.now()}_${req.file.originalname}`;
       const fileUrl = await s3Service.uploadFile(req.file, s3Path);
 
       // Delete old icon if it exists
@@ -194,21 +190,32 @@ const getSubscriptionPlanById = asyncHandler(async (req, res) => {
 /*----------------------------------Delete a subscription plan---------------------------------*/
 const getAllSubscriptionPlans = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, isActive } = req.query;
+
+  // Parse page and limit to integers
   const pageNumber = parseInt(page, 10);
   const limitNumber = parseInt(limit, 10);
   const skip = (pageNumber - 1) * limitNumber;
+
+  // Build the filter object
   const filter = {};
-  if (isActive !== undefined) {
-    filter.isActive = isActive === "true";
+  if (isActive === "true") {
+    filter.isActive = true;
+  } else if (isActive === "false") {
+    filter.isActive = false;
+  } else {
+    filter.isActive = true; // Default behavior
   }
 
+  // Count total plans based on filter
   const totalPlans = await SubscriptionPlan.countDocuments(filter);
 
+  // Fetch paginated subscription plans
   const plans = await SubscriptionPlan.find(filter)
     .skip(skip)
     .limit(limitNumber)
     .sort({ "price.Monthly": 1 });
 
+  // Return response with pagination info
   res.status(200).json(
     new ApiResponse(
       200,

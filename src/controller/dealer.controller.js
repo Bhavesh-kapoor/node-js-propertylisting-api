@@ -11,16 +11,19 @@ export const validateDealerData = [
   check("descriptions", "descriptions  is required!").notEmpty(),
   check("noIndex", "noIndex  is required!").notEmpty(),
 ];
-// delete Seo Data
+
+// delete dealer Data
 export const deleteDealerData = asyncHandler(async (req, res) => {
   const { _id } = req.params;
   const deletedData = await User.findByIdAndDelete(_id);
   if (!deletedData) {
-    return res.status(404).json(new ApiError(404, "", "Seo data not found!"));
+    return res
+      .status(404)
+      .json(new ApiError(404, "", "Dealer data not found!"));
   }
   return res
     .status(200)
-    .json(new ApiResponse(200, "", "Seo data deleted successfully!!"));
+    .json(new ApiResponse(200, "", "Dealer data deleted successfully!!"));
 });
 
 // list of dealer data

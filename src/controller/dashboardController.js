@@ -230,68 +230,61 @@ const getOverviewByRevenue = asyncHandler(async (req, res) => {
 const getTransactionsByMonth = asyncHandler(async (req, res) => {
   try {
     const { year, month } = req.query;
-
-    // Default to the current year if no year is provided
+    // If no year is provided, default to the current year
     const selectedYear = year ? parseInt(year, 10) : new Date().getFullYear();
-
-    // Validate the month parameter if provided
-    if (month) {
-      const parsedMonth = parseInt(month, 10);
-      if (parsedMonth < 1 || parsedMonth > 12) {
-        return res.status(400).json(
-          new ApiResponse(400, null, "Invalid month. Please provide a value between 1 and 12.")
-        );
-      }
-    }
-
     let start, end, interval;
     if (month) {
-      // Handle monthly interval
-      const selectedMonth = parseInt(month, 10) - 1; // Convert to zero-based month
+      if (month) {
+        const parsedMonth = parseInt(month, 10);
+        if (parsedMonth < 1 || parsedMonth > 12) {
+          return res
+            .status(200)
+            .json(new ApiResponse(200, null, "invalid month"));
+        }
+      }
+      const selectedMonth = parseInt(month, 10) - 1;
       start = startOfMonth(new Date(selectedYear, selectedMonth));
       end = endOfMonth(new Date(selectedYear, selectedMonth));
       interval = eachDayOfInterval({ start, end });
     } else {
-      // Handle yearly interval
-      start = startOfYear(new Date(selectedYear));
-      end = endOfYear(new Date(selectedYear));
+      start = startOfYear(new Date(selectedYear, 0));
+      end = endOfYear(new Date(selectedYear, 11));
       interval = eachMonthOfInterval({ start, end });
     }
-
-    // Fetch transactions within the specified interval
     const transactions = await SubscribedPlan.aggregate([
       {
         $match: {
-          createdAt: { $gte: start, $lte: end }, // Filter by date range
-          status: "active", // Filter only active plans
+          createdAt: {
+            $gte: start,
+            $lte: end,
+          },
+          status: "active",
         },
       },
       {
         $group: {
           _id: month ? { $dayOfMonth: "$createdAt" } : { $month: "$createdAt" },
-          totalRevenue: { $sum: "$amount" }, // Sum the revenue for each day/month
+          totalRevenue: { $sum: "$amount" },
         },
       },
       {
-        $sort: { _id: 1 }, // Sort by day or month
+        $sort: { _id: 1 },
       },
     ]);
 
-    // Initialize response with zero revenue for each day/month
+    // Initialize response with zero data for each day/month
     const response = interval.map((date) => ({
       label: month ? format(date, "dd MMMM") : format(date, "MMMM"),
       totalRevenue: 0,
     }));
 
-    // Populate response with transaction data
+    // Populate response based on transactions data
     transactions.forEach((transaction) => {
-      const index = transaction._id - 1; // Adjust for zero-based index
-      if (response[index]) {
-        response[index].totalRevenue = transaction.totalRevenue;
-      }
+      const index = month ? transaction._id - 1 : transaction._id - 1; // zero-indexed
+      response[index].totalRevenue = transaction.totalRevenue;
     });
 
-    // Format the response for charting
+    // Format the final response for charting
     const finalResponse = {
       datasets: [
         {
@@ -302,14 +295,14 @@ const getTransactionsByMonth = asyncHandler(async (req, res) => {
           fill: true,
         },
       ],
-      labels: response.map((item) => item.label),
     };
 
-    // Send the final response
-    res.status(200).json(new ApiResponse(200, finalResponse, "Data fetched successfully!"));
+    res
+      .status(200)
+      .json(new ApiResponse(200, finalResponse, "Data fetched successfully"));
   } catch (error) {
-    console.error("Error fetching transactions by month:", error);
-    res.status(500).json(new ApiError(500, "Server error", error.message));
+    console.error(error);
+    res.status(500).json(new ApiError(500, "Server error", error));
   }
 });
 

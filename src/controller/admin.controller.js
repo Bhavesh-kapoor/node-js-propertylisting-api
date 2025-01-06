@@ -569,6 +569,35 @@ const changeAvatarImage = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "Avatar image updated successfully"));
 });
 
+/* --------------------------------update Address-----------------------------------------*/
+
+const updateAddress = asyncHandler(async (req, res) => {
+  let userId = req.user._id;
+  
+  if (req.user.role === "admin") {
+    userId = req.params.userId;
+  }
+  const { address } = req.body;
+  console.log()
+
+  if (!address) {
+    throw new ApiError(400, "Address object is required.");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: { address } },
+    { new: true, runValidators: false }
+  );
+
+  if (!user) {
+    throw new ApiError(404, "User not found.");
+  }
+
+  res.status(200).json(
+    new ApiResponse(200, user.address, "Address updated successfully.")
+  );
+});
 export {
   registerUser,
   loginUser,
@@ -582,4 +611,5 @@ export {
   updateAccountDetails,
   loginAdmin,
   changeAvatarImage,
+  updateAddress,
 };

@@ -157,11 +157,11 @@ const getProperties = asyncHandler(async (req, res) => {
     status,
     amenities,
     recommended,
-    isActive = true,
+    isActive,
     page = 1,
     limit = 10,
     sortBy = "createdAt",
-    isadmin = false,
+    isadmin = "false",
     sortOrder = "desc",
   } = req.query;
 
@@ -213,15 +213,18 @@ const getProperties = asyncHandler(async (req, res) => {
     filter.status = status;
   }
 
-  filter.isActive = JSON.parse(isActive)
-    ? JSON.parse(isActive)
-    : { $ne: !JSON.parse(isActive) };
+  filter.isActive = true;
 
-  if (JSON.parse(isadmin) == false) {
-    filter.isActive = true;
-  } else if (JSON.parse(isadmin)) {
+  if (isadmin === "true") {
+    isActive === "false"
+      ? (filter.isActive = false)
+      : isActive === "true"
+      ? (filter.isActive = true)
+      : delete filter.isActive;
+
     sortings = {};
   }
+
   // Filter by amenities
   if (amenities) {
     const amenitiesArray = amenities
@@ -230,9 +233,9 @@ const getProperties = asyncHandler(async (req, res) => {
       .map((item) => item.trim());
     filter.amenities = { $all: amenitiesArray };
   }
-
   // Use aggregation pipeline for better sorting control
-  const properties = await Property.aggregate([
+
+  const pipeline = [
     { $match: filter },
     {
       $lookup: {
@@ -318,7 +321,9 @@ const getProperties = asyncHandler(async (req, res) => {
         isVerified: "$ownerDetails.isVerified",
       },
     },
-  ]);
+  ];
+
+  const properties = await Property.aggregate(pipeline);
 
   // Filter properties for recommended flag
   const filteredProperties =
@@ -634,7 +639,19 @@ const deleteProperty = asyncHandler(async (req, res) => {
   if (property.video) {
     await s3Service.deleteFile(property.video);
   }
-
+  const currentDate = new Date();
+  const activeSubscription = await SubscribedPlan.findOne({
+    userId: property.owner,
+    startDate: { $lte: currentDate },
+    endDate: { $gte: currentDate },
+  });
+  if (property?.isActive === false) {
+    activeSubscription.listed -= 1;
+    if (activeSubscription.listed <= activeSubscription.listingOffered) {
+      activeSubscription.isActive = true;
+    }
+    await activeSubscription.save();
+  }
   // Delete the property from the database
   await Property.findByIdAndDelete(id);
 

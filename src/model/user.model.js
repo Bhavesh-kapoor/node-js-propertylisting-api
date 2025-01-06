@@ -24,11 +24,10 @@ const addressSchema = new mongoose.Schema(
       required: true,
       default: "India",
     },
-    pincode: {
+    pinCode: {
       type: String,
       trim: true,
       required: true,
-      match: [/^\d{6}$/, "Please enter a valid 6-digit pincode"],
     },
     landmark: {
       type: String,
@@ -80,7 +79,7 @@ const userSchema = new mongoose.Schema(
     refreshToken: { type: String },
     role: {
       type: String,
-      enum: ["admin", "dealer", "agent", "builder","owner"],
+      enum: ["admin", "dealer", "agent", "builder", "owner"],
       required: true,
     },
     permissions: { type: [String], default: [] },
@@ -94,9 +93,9 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    priorityRank:{
+    priorityRank: {
       type: Number,
-    }
+    },
   },
   { timestamps: true }
 );

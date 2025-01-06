@@ -202,8 +202,6 @@ const getAllSubscriptionPlans = asyncHandler(async (req, res) => {
     filter.isActive = true;
   } else if (isActive === "false") {
     filter.isActive = false;
-  } else {
-    filter.isActive = true; // Default behavior
   }
 
   // Count total plans based on filter

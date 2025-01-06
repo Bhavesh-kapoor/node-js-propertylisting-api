@@ -43,9 +43,11 @@ const SubscribedPlanSchema = new mongoose.Schema(
     },
     duration:{
       type: String,
-      enum: ["Monthly","Quarterly","Yearly"],
-      required: true,
+      enum: ["Monthly","Yearly","Free"],
       trim: true,
+    },
+    amount:{
+      type: Number,
     }
   },
   { timestamps: true }

@@ -109,6 +109,8 @@ const registerUser = asyncHandler(async (req, res) => {
       endDate: endDate,
       isActive: true,
       status: "active",
+      amount: 0,
+      duration: "Free",
     });
   }
   const { accessToken, refreshToken } = await createAccessOrRefreshToken(

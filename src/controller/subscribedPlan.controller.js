@@ -159,7 +159,7 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
       endDate = addDays(currentDate, 28);
       break;
   }
-
+  const amount = subscriptionPlan.price[duration];
   // Create new subscription
   const listingOffered = subscriptionPlan.maxProperties;
   const newSubscribedPlan = await SubscribedPlan.create({
@@ -168,6 +168,7 @@ const subscribeAPlan = asyncHandler(async (req, res) => {
     listingOffered: listingOffered,
     endDate: endDate,
     duration,
+    amount,
   });
 
   return res.status(201).json(

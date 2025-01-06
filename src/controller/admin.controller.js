@@ -96,10 +96,10 @@ const registerUser = asyncHandler(async (req, res) => {
     const freePlan = await SubscriptionPlan.findOne({
       $or: [
         { "price.Monthly": 0 },
-        { "price.Quarterly": 0 },
         { "price.Yearly": 0 },
       ],
     });
+    console.log(freePlan)
     const currentDate = new Date();
     const endDate = addDays(currentDate, 3650);
     newSubscribedPlan = await SubscribedPlan.create({

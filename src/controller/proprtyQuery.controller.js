@@ -122,8 +122,8 @@ const getQueries = asyncHandler(async (req, res) => {
     propertyId,
     searchkey,
     search = "",
-    sort = "createdAt",
-    order = "desc",
+    sortkey = "createdAt",
+    sortdir = "desc",
   } = req.query;
   const matchStage = {};
   if (startDate || endDate) {
@@ -141,8 +141,6 @@ const getQueries = asyncHandler(async (req, res) => {
   if (search && searchkey) {
     matchStage[searchkey] = { $regex: search, $options: "i" };
   }
-
-  const sortOrder = order === "desc" ? -1 : 1;
 
   const pipeline = [
     { $match: matchStage },
@@ -182,7 +180,7 @@ const getQueries = asyncHandler(async (req, res) => {
         updatedAt: 1,
       },
     },
-    { $sort: { [sort]: sortOrder } },
+    { $sort: { [sortkey]: sortdir === "asc" ? 1 : -1 } },
     { $skip: (Number(page) - 1) * Number(limit) },
     { $limit: Number(limit) },
   ];

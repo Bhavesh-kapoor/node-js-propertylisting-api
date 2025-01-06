@@ -191,8 +191,17 @@ const getProperties = asyncHandler(async (req, res) => {
     if (minPrice) filter.price.$gte = Number(minPrice);
     if (maxPrice) filter.price.$lte = Number(maxPrice);
   }
-  if (status) filter.status = status;
-  if (status) filter.propertyType = status;
+
+  if(status){
+    let  blankarrforcommerical = ['Commercial','Villa','House','Apartment','Condo','Land'];
+    if(blankarrforcommerical.includes(status)){
+       filter.propertyType = status;
+
+    }else{
+      filter.status =  status;
+    }
+
+  }
 
   filter.isActive = true;
 

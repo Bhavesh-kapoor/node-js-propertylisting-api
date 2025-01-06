@@ -23,34 +23,59 @@ const getRandomColor = () => {
   const b = Math.floor(Math.random() * 255);
   return `rgba(${r}, ${g}, ${b}, 0.5)`;
 };
+
 const getOverview = asyncHandler(async (req, res) => {
-  const user = req.user;
   const {
     dateRange = "today",
-    status = "captured",
+    status = "active",
     page = 1,
     limit = 5,
   } = req.query;
+
   const pageNumber = parseInt(page, 10);
   const limitNumber = parseInt(limit, 10);
-  // Set up date ranges based on the dateRange query parameter
+  const skipDocs = (pageNumber - 1) * limitNumber;
+
+  // Set up date ranges
   const now = new Date();
   let dateStart, dateEnd;
 
-  if (dateRange === "today") {
-    dateStart = now;
-    dateEnd = endOfDay(now);
-  } else {
-    dateStart = now;
-    dateEnd = endOfMonth(now);
+  switch (dateRange) {
+    case "today":
+      dateStart = new Date(now.setHours(0, 0, 0, 0));
+      dateEnd = endOfDay(now);
+      break;
+    case "month":
+      dateStart = new Date(now.setDate(1));
+      dateEnd = endOfMonth(now);
+      break;
+    default:
+      dateStart = new Date(now.setHours(0, 0, 0, 0));
+      dateEnd = endOfDay(now);
   }
+
+  // Fetch active users (non-admin)
   const users = await User.find({ isActive: true, role: { $ne: "admin" } })
     .sort({ createdAt: -1 })
+    .skip(skipDocs)
     .limit(limitNumber)
-    .select("name avatarUrl email mobile role");
+    .select("name avatarUrl email mobile role")
+    .lean();
 
+  // Count total users for pagination
+  const totalUsers = await User.countDocuments({
+    isActive: true,
+    role: { $ne: "admin" },
+  });
+
+  // Aggregate pipeline for subscribed plans
   const pipeline = [
-    { $match: { status: status } },
+    {
+      $match: {
+        status: status,
+        createdAt: { $gte: dateStart, $lte: dateEnd },
+      },
+    },
     {
       $lookup: {
         from: "users",
@@ -59,35 +84,74 @@ const getOverview = asyncHandler(async (req, res) => {
         as: "userData",
       },
     },
-    { $unwind: { path: "$userData", preserveNullAndEmptyArrays: true } },
+    {
+      $unwind: {
+        path: "$userData",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
     {
       $lookup: {
         from: "subscriptionplans",
         localField: "planId",
         foreignField: "_id",
-        as: "subscriptionplans",
+        as: "subscriptionPlan",
       },
     },
-    { $unwind: { path: "$subscriptionplans", preserveNullAndEmptyArrays: true } },
+    {
+      $unwind: {
+        path: "$subscriptionPlan",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
     {
       $project: {
         amount: 1,
+        status: 1,
+        duration: 1,
+        startDate: 1,
+        endDate: 1,
+        listingOffered: 1,
+        listed: 1,
         createdAt: 1,
-        transactionId: 1,
-        userName: "$userData.name",
+        user: {
+          _id: "$userData._id",
+          name: "$userData.name",
+          email: "$userData.email",
+        },
+        plan: {
+          _id: "$subscriptionPlan._id",
+          name: "$subscriptionPlan.name",
+          description: "$subscriptionPlan.description",
+        },
       },
     },
     { $sort: { createdAt: -1 } },
+    { $skip: skipDocs },
     { $limit: limitNumber },
   ];
-  const transactions = await SubscribedPlan.aggregate(pipeline).exec();
+
+  // Get total count for pagination
+  const countPipeline = [...pipeline];
+  countPipeline.splice(-2); // Remove skip and limit stages
+  const [{ count: totalTransactions } = { count: 0 }] =
+    await SubscribedPlan.aggregate([...countPipeline, { $count: "count" }]);
+
+  const transactions = await SubscribedPlan.aggregate(pipeline);
 
   return res.status(200).json(
     new ApiResponse(
       200,
       {
         users,
-        transactions,
+        subscribedPlans: transactions,
+        pagination: {
+          currentPage: pageNumber,
+          totalPages: Math.ceil(totalTransactions / limitNumber),
+          totalUsers,
+          totalTransactions,
+          limit: limitNumber,
+        },
       },
       "Data fetched successfully!"
     )

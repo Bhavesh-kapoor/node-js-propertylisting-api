@@ -17,12 +17,7 @@ const multiUpload = multerUpload.fields([
   { name: "videofile", maxCount: 1 },
 ]);
 
-propertyRouter.post(
-  "/add/:userId?",
-  multiUpload,
-  propertyValidator,
-  createProperty
-);
+propertyRouter.post("/add", multiUpload, propertyValidator, createProperty);
 
 propertyRouter.put(
   "/update/:id",

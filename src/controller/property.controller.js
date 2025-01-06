@@ -49,7 +49,8 @@ const createProperty = asyncHandler(async (req, res) => {
     amenities,
     specifications,
     videoUrl,
-    ownerId
+    ownerId,
+    isActive,
   } = req.body;
   let user = req.user;
   if (user.role === "admin") {
@@ -81,6 +82,7 @@ const createProperty = asyncHandler(async (req, res) => {
     specifications,
     videoUrl,
     owner: user._id,
+    isActive: isActive === "true",
   };
 
   const currentDate = new Date();

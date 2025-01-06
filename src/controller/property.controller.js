@@ -154,6 +154,7 @@ const getProperties = asyncHandler(async (req, res) => {
     country,
     name,
     propertyType,
+    listingType,
     minPrice,
     maxPrice,
     status,
@@ -184,6 +185,7 @@ const getProperties = asyncHandler(async (req, res) => {
   if (country) filter["address.country"] = { $regex: country, $options: "i" };
   if (name) filter.title = { $regex: name, $options: "i" };
   if (propertyType) filter.propertyType = propertyType;
+  if (listingType) filter.propertyType = listingType;
   if (minPrice || maxPrice) {
     filter.price = {};
     if (minPrice) filter.price.$gte = Number(minPrice);

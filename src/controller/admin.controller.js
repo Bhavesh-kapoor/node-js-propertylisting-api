@@ -573,12 +573,12 @@ const changeAvatarImage = asyncHandler(async (req, res) => {
 
 const updateAddress = asyncHandler(async (req, res) => {
   let userId = req.user._id;
-  
+
   if (req.user.role === "admin") {
     userId = req.params.userId;
   }
   const { address } = req.body;
-  console.log()
+  console.log();
 
   if (!address) {
     throw new ApiError(400, "Address object is required.");
@@ -594,10 +594,20 @@ const updateAddress = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found.");
   }
 
-  res.status(200).json(
-    new ApiResponse(200, user.address, "Address updated successfully.")
-  );
+  res
+    .status(200)
+    .json(new ApiResponse(200, user.address, "Address updated successfully."));
 });
+
+const ActiveUserList = asyncHandler(async (req, res) => {
+  const activeUsers = await User.find({
+    isActive: true,
+    role: { $ne: "admin" },
+  }).select("name email");
+
+  res.status(200).json(new ApiResponse(200, activeUsers, "Active Users"));
+});
+
 export {
   registerUser,
   loginUser,
@@ -612,4 +622,5 @@ export {
   loginAdmin,
   changeAvatarImage,
   updateAddress,
+  ActiveUserList,
 };

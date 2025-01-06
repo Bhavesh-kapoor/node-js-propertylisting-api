@@ -45,7 +45,10 @@ import deviceRouter from "./deviceId.routes.js";
 integratedRoutes.use("/device-id", deviceRouter);
 /*-----------------------------------------dashboardRoutes------------------------------------*/
 import dashboardRoutes from "./dashboard.routes.js";
-integratedRoutes.use("/admin/dashboard", dashboardRoutes);
+integratedRoutes.use("/admin/dashboard", verifyJwtToken, dashboardRoutes);
+
+import { ActiveUserList } from "../controller/admin.controller.js";
+integratedRoutes.use("/admin/get-active-users", verifyJwtToken, ActiveUserList);
 
 /*-----------------------------------------propertyQuery Routes------------------------------------*/
 import propertyQueryRoutes from "./propertyQuery.routes.js";

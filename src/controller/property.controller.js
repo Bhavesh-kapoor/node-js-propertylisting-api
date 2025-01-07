@@ -153,7 +153,6 @@ const getProperties = asyncHandler(async (req, res) => {
     state,
     country,
     name,
-    search,
     propertyType,
     listingType,
     minPrice,
@@ -180,8 +179,8 @@ const getProperties = asyncHandler(async (req, res) => {
     sortPriorityRank: 1,
   };
 
-  if (search) {
-    const searchRegex = { $regex: search, $options: "i" };
+  if (name) {
+    const searchRegex = { $regex: name, $options: "i" };
     filter.$or = [
       { title: searchRegex },
       { description: searchRegex },
@@ -198,38 +197,38 @@ const getProperties = asyncHandler(async (req, res) => {
         $expr: {
           $regexMatch: {
             input: { $toString: "$price" },
-            regex: search,
-            options: "i"
-          }
-        }
+            regex: name,
+            options: "i",
+          },
+        },
       },
       {
         $expr: {
           $regexMatch: {
             input: { $toString: "$specifications.bedrooms" },
-            regex: search,
-            options: "i"
-          }
-        }
+            regex: name,
+            options: "i",
+          },
+        },
       },
       {
         $expr: {
           $regexMatch: {
             input: { $toString: "$specifications.bathrooms" },
-            regex: search,
-            options: "i"
-          }
-        }
+            regex: name,
+            options: "i",
+          },
+        },
       },
       {
         $expr: {
           $regexMatch: {
             input: { $toString: "$specifications.area" },
-            regex: search,
-            options: "i"
-          }
-        }
-      }
+            regex: name,
+            options: "i",
+          },
+        },
+      },
     ];
   }
 
@@ -237,7 +236,6 @@ const getProperties = asyncHandler(async (req, res) => {
   if (city) filter["address.city"] = { $regex: city, $options: "i" };
   if (state) filter["address.state"] = { $regex: state, $options: "i" };
   if (country) filter["address.country"] = { $regex: country, $options: "i" };
-  if (name) filter.title = { $regex: name, $options: "i" };
   if (propertyType) filter.propertyType = propertyType;
   if (listingType) {
     let blankarrforcommerical = [

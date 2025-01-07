@@ -8,64 +8,76 @@ import { otpContent } from "../utils/emailContent.js";
 /*---------------------------------------mobileOtp------------------------------------------------*/
 
 const sendOtpMobile = asyncHandler(async (req, res) => {
-    const { mobile, flag } = req.body;
-    console.log(mobile, flag)
-    if (flag) {
-        console.log("check")
-        if (flag === 'signup') {
-
-            const existedUser = await User.findOne({ mobile: mobile.trim() });
-            console.log(existedUser)
-            if (existedUser) {
-                return res.status(200).json(new ApiResponse(200, null, "User already exists!"));
-            }
-        }
+  const { mobile, flag } = req.body;
+  console.log(mobile, flag);
+  if (flag) {
+    console.log("check");
+    if (flag === "signup") {
+      const existedUser = await User.findOne({ mobile: mobile.trim() });
+      console.log(existedUser);
+      if (existedUser) {
+        return res
+          .status(200)
+          .json(new ApiResponse(200, null, "User already exists!"));
+      }
     }
-    if (!mobile) {
-        return res.status(400).json(new ApiError(400, null, "Please provide a mobile number"));
-    }
+  }
+  if (!mobile) {
+    return res
+      .status(400)
+      .json(new ApiError(400, null, "Please provide a mobile number"));
+  }
 
-    const otp = await createAndStoreOtp(mobile, "mobile");
-    console.log("Otp", otp)
-    return res.status(200).json(new ApiResponse(200, null, "OTP sent successfully"));
-})
+  const otp = await createAndStoreOtp(mobile, "mobile");
+  console.log("Otp", otp);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "OTP sent successfully"));
+});
 
 const verifyMobileOtp = asyncHandler(async (req, res) => {
-    const { mobile, otp } = req.body;
-    if (!mobile || !otp) {
-        throw new ApiError(400, "Mobile number and OTP are required")
-    }
-    const isVerified = await verifyOTP(mobile, otp);
-    if (!isVerified) {
-        throw new ApiError(400, "Invalid OTP")
-    }
-    return res.status(200).json(new ApiResponse(200, { isVerified }, "OTP verified successfully"));
-})
+  const { mobile, otp } = req.body;
+  if (!mobile || !otp) {
+    throw new ApiError(400, "Mobile number and OTP are required");
+  }
+  const isVerified = await verifyOTP(mobile, otp);
+  if (!isVerified) {
+    throw new ApiError(400, "Invalid OTP");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { isVerified }, "OTP verified successfully"));
+});
 
 const sendOtpEmail = asyncHandler(async (req, res) => {
-    const { email } = req.body;
-    if (!email) {
-        return res.status(400).json(new ApiError(400, null, "Please provide a mobile number"));
-    }
-    const otp = await createAndStoreOtp(email, "email");
+  const { email } = req.body;
+  if (!email) {
+    return res
+      .status(400)
+      .json(new ApiError(400, null, "Please provide a mobile number"));
+  }
+  const otp = await createAndStoreOtp(email, "email");
 
-    const subject = `Your One-Time Password for ${process.env.APP_NAME}`
-    const htmlContent = otpContent(otp)
-    sendMail(email, subject, htmlContent)
-    //write the code here to send otp via email
-    return res.status(200).json(new ApiResponse(200, null, "OTP sent successfully"));
-})
+  const subject = `Your One-Time Password for ${process.env.APP_NAME}`;
+  const htmlContent = otpContent(otp);
+  sendMail(email, subject, htmlContent);
+  //write the code here to send otp via email
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "OTP sent successfully"));
+});
 
 const verifyEmailOtp = asyncHandler(async (req, res) => {
-    const { email, otp } = req.body;
-    if (!email || !otp) {
-        throw new ApiError(401, "Email OTP are required")
-    }
-    const isVerified = await verifyOTP(email, otp);
-    if (!isVerified) {
-        throw new ApiError(401, "Invalid OTP")
-    }
-    return res.status(200).json(new ApiResponse(200, isVerified, "OTP verified successfully"));
-})
-export { sendOtpMobile, verifyMobileOtp, sendOtpEmail, verifyEmailOtp }
-
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    throw new ApiError(401, "Email OTP are required");
+  }
+  const isVerified = await verifyOTP(email, otp);
+  if (!isVerified) {
+    throw new ApiError(401, "Invalid OTP");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, isVerified, "OTP verified successfully"));
+});
+export { sendOtpMobile, verifyMobileOtp, sendOtpEmail, verifyEmailOtp };

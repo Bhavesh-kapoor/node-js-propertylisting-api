@@ -8,6 +8,7 @@ import {
   updateAccountDetails,
   changeAvatarImage,
   updateAddress,
+  setNewPassword
 } from "../controller/admin.controller.js";
 import { multerUpload } from "../middlewere/multer.middlewere.js";
 
@@ -22,6 +23,7 @@ router.post("/refresh-access-token", refreshAccessToken);
 router.post("/update-avatar", multerUpload.single("avatar"), changeAvatarImage);
 router.post("/get-user-list", changeAvatarImage);
 router.put("/update-address/:userId?", updateAddress);
+router.post("/set-new-password", setNewPassword);
 
 
 export default router;

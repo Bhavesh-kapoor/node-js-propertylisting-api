@@ -31,7 +31,7 @@ const getAllBlogs = asyncHandler(async (req, res) => {
   const pageNumber = parseInt(page, 10);
   const limitNumber = parseInt(limit, 10);
   const skip = (pageNumber - 1) * limitNumber;
-  const matchStage = {};
+  const matchStage = {isActive: true};
   if (title) {
     matchStage.title = { $regex: title, $options: "i" };
   }

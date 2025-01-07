@@ -49,7 +49,6 @@ const sendOtpEmail = asyncHandler(async (req, res) => {
     }
     const otp = await createAndStoreOtp(email, "email");
 
-    console.log("Otp", otp)
     const subject = `Your One-Time Password for ${process.env.APP_NAME}`
     const htmlContent = otpContent(otp)
     sendMail(email, subject, htmlContent)
@@ -60,11 +59,11 @@ const sendOtpEmail = asyncHandler(async (req, res) => {
 const verifyEmailOtp = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
     if (!email || !otp) {
-        throw new ApiError(400, "Email OTP are required")
+        throw new ApiError(401, "Email OTP are required")
     }
     const isVerified = await verifyOTP(email, otp);
     if (!isVerified) {
-        throw new ApiError(400, "Invalid OTP")
+        throw new ApiError(401, "Invalid OTP")
     }
     return res.status(200).json(new ApiResponse(200, isVerified, "OTP verified successfully"));
 })

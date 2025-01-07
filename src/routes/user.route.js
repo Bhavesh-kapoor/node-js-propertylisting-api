@@ -23,4 +23,5 @@ router.post("/update-avatar", multerUpload.single("avatar"), changeAvatarImage);
 router.post("/get-user-list", changeAvatarImage);
 router.put("/update-address/:userId?", updateAddress);
 
+
 export default router;

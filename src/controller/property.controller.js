@@ -153,6 +153,7 @@ const getProperties = asyncHandler(async (req, res) => {
     state,
     country,
     name,
+    search,
     propertyType,
     listingType,
     minPrice,
@@ -179,6 +180,59 @@ const getProperties = asyncHandler(async (req, res) => {
     sortPriorityRank: 1,
   };
 
+  if (search) {
+    const searchRegex = { $regex: search, $options: "i" };
+    filter.$or = [
+      { title: searchRegex },
+      { description: searchRegex },
+      { "address.fullAddress": searchRegex },
+      { "address.city": searchRegex },
+      { "address.state": searchRegex },
+      { "address.country": searchRegex },
+      { "address.pinCode": searchRegex },
+      { propertyType: searchRegex },
+      { status: searchRegex },
+      { amenities: searchRegex },
+      // Include number fields with toString conversion
+      {
+        $expr: {
+          $regexMatch: {
+            input: { $toString: "$price" },
+            regex: search,
+            options: "i"
+          }
+        }
+      },
+      {
+        $expr: {
+          $regexMatch: {
+            input: { $toString: "$specifications.bedrooms" },
+            regex: search,
+            options: "i"
+          }
+        }
+      },
+      {
+        $expr: {
+          $regexMatch: {
+            input: { $toString: "$specifications.bathrooms" },
+            regex: search,
+            options: "i"
+          }
+        }
+      },
+      {
+        $expr: {
+          $regexMatch: {
+            input: { $toString: "$specifications.area" },
+            regex: search,
+            options: "i"
+          }
+        }
+      }
+    ];
+  }
+
   // Build filter conditions
   if (city) filter["address.city"] = { $regex: city, $options: "i" };
   if (state) filter["address.state"] = { $regex: state, $options: "i" };
@@ -186,32 +240,41 @@ const getProperties = asyncHandler(async (req, res) => {
   if (name) filter.title = { $regex: name, $options: "i" };
   if (propertyType) filter.propertyType = propertyType;
   if (listingType) {
-    let  blankarrforcommerical = ['Commercial','Villa','House','Apartment','Condo','Land'];
-    if(!blankarrforcommerical.includes(listingType)){
-      filter.status =  listingType;
-
-    }else{
+    let blankarrforcommerical = [
+      "Commercial",
+      "Villa",
+      "House",
+      "Apartment",
+      "Condo",
+      "Land",
+    ];
+    if (!blankarrforcommerical.includes(listingType)) {
+      filter.status = listingType;
+    } else {
       filter.propertyType = listingType;
-
     }
   }
-    
-    
+
   if (minPrice || maxPrice) {
     filter.price = {};
     if (minPrice) filter.price.$gte = Number(minPrice);
     if (maxPrice) filter.price.$lte = Number(maxPrice);
   }
 
-  if(status){
-    let  blankarrforcommerical = ['Commercial','Villa','House','Apartment','Condo','Land'];
-    if(blankarrforcommerical.includes(status)){
-       filter.propertyType = status;
-
-    }else{
-      filter.status =  status;
+  if (status) {
+    let blankarrforcommerical = [
+      "Commercial",
+      "Villa",
+      "House",
+      "Apartment",
+      "Condo",
+      "Land",
+    ];
+    if (blankarrforcommerical.includes(status)) {
+      filter.propertyType = status;
+    } else {
+      filter.status = status;
     }
-
   }
 
   filter.isActive = true;
@@ -220,7 +283,7 @@ const getProperties = asyncHandler(async (req, res) => {
     if (isActive === "false") filter.isActive = false;
     else if (isActive === "true") filter.isActive = true;
     else delete filter.isActive;
-    
+
     sortings = {};
   }
 
@@ -284,10 +347,7 @@ const getProperties = asyncHandler(async (req, res) => {
   }
 
   // Create count pipeline
-  const countPipeline = [
-    ...basePipeline,
-    { $count: "totalCount" }
-  ];
+  const countPipeline = [...basePipeline, { $count: "totalCount" }];
 
   // Create data pipeline
   const dataPipeline = [
@@ -332,7 +392,7 @@ const getProperties = asyncHandler(async (req, res) => {
         ownerName: "$ownerDetails.name",
         isVerified: "$ownerDetails.isVerified",
       },
-    }
+    },
   ];
   // Execute both pipelines in parallel
   const [countResult, properties] = await Promise.all([
@@ -368,7 +428,9 @@ const getProperties = asyncHandler(async (req, res) => {
   );
 
   const propertiesWithTags = properties.map((property) => {
-    const ownerSubscription = subscriptionMap.get(property.owner._id.toString());
+    const ownerSubscription = subscriptionMap.get(
+      property.owner._id.toString()
+    );
     return {
       ...property,
       tag: ownerSubscription?.title || "",

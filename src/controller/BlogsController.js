@@ -43,15 +43,9 @@ const getAllBlogs = asyncHandler(async (req, res) => {
     if (startDate) matchStage.createdAt.$gte = new Date(startDate);
     if (endDate) matchStage.createdAt.$lte = new Date(endDate);
   }
-  if (propertyId && isValidObjectId(propertyId)) {
-    matchStage.propertyId = new mongoose.Types.ObjectId(propertyId);
-  }
-
   if (search && searchkey) {
     matchStage[searchkey] = { $regex: search, $options: "i" };
   }
-
-  const sortOrder = order === "desc" ? -1 : 1;
 
   const aggregatePipeline = [
     { $match: matchStage },
@@ -66,7 +60,7 @@ const getAllBlogs = asyncHandler(async (req, res) => {
     },
     { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
     { $addFields: { category: "$category.name" } },
-    { $sort: { [sort]: sortOrder } },
+    { $sort: { [sortkey]: sortdir === "asc" ? 1 : -1 } },
     { $skip: skip },
     { $limit: limitNumber },
   ];

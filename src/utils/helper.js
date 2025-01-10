@@ -1,8 +1,10 @@
 import { User } from "../model/user.model.js";
 import mongoose from "mongoose";
-import crypto from 'crypto';
+import crypto from "crypto";
 import { transporter, mailOptions } from "../config/nodeMailerConfig.js";
+import { configDotenv } from "dotenv";
 
+configDotenv();
 /*------------------------------------------to generate tokens-------------------------------------------*/
 const createAccessOrRefreshToken = async (user_id) => {
   const user = await User.findById(user_id);
@@ -38,13 +40,11 @@ const sendMail = (receiverEmail, subject, htmlContent) => {
 
 /*------------------------------------------create transaction Id------------------------------------------*/
 const generateTransactionId = () => {
-  return "TXN_" + crypto.randomBytes(6).toString('hex').toUpperCase();
+  return "TXN_" + crypto.randomBytes(6).toString("hex").toUpperCase();
 };
-
 function extractS3KeyFromUrl(url) {
-  const s3Domain = 's3.ap-south-1.amazonaws.com';
-  const bucketName = 'wedding';
-
+  const s3Domain = `s3.${process.env.AWS_REGION}.amazonaws.com`;
+  const bucketName = process.env.AWS_BUCKET_NAME;
   const regex = new RegExp(`https://${bucketName}\\.${s3Domain}/(.+)`);
   const match = url.match(regex);
 
@@ -52,7 +52,7 @@ function extractS3KeyFromUrl(url) {
     return decodeURIComponent(match[1]);
   }
 
-  throw new Error('Invalid S3 URL or mismatch with bucket domain');
+  throw new Error("Invalid S3 URL or mismatch with bucket domain");
 }
 
 const getPipeline = (query) => {
@@ -105,12 +105,7 @@ const getPipeline = (query) => {
 
   return { pipeline, matchStage, options };
 };
-const paginationResult = (
-  pageNumber,
-  limitNumber,
-  totalResuts,
-  results
-) => {
+const paginationResult = (pageNumber, limitNumber, totalResuts, results) => {
   return {
     result: results,
     pagination: {
@@ -122,4 +117,13 @@ const paginationResult = (
   };
 };
 
-export { createAccessOrRefreshToken, isValidObjectId, generateOTP, sendMail, generateTransactionId, extractS3KeyFromUrl, getPipeline, paginationResult }
+export {
+  createAccessOrRefreshToken,
+  isValidObjectId,
+  generateOTP,
+  sendMail,
+  generateTransactionId,
+  extractS3KeyFromUrl,
+  getPipeline,
+  paginationResult,
+};

@@ -8,7 +8,7 @@ const createAndStoreOtp = async (identifier, type) => {
     }
 
     // Generate OTP
-    const otpCode = generateOTP()
+    const otpCode = generateOTP();
     const otpData = { otp: otpCode, type };
 
     if (type === "mobile") otpData.mobile = identifier;
@@ -44,7 +44,6 @@ const verifyOTP = async (identifier, otp) => {
         { email: identifier, otp },
       ],
     });
-
     if (otpDoc) {
       await OTP.deleteOne({ _id: otpDoc._id });
       console.log("OTP verified and deleted successfully.");

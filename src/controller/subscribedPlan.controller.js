@@ -312,6 +312,8 @@ const getAllSubscribedPlans = asyncHandler(async (req, res) => {
         planName: "$plan.name",
         planTitle: "$plan.title",
         planDescription: "$plan.description",
+        createdAt: 1,
+        updatedAt: 1,
       },
     },
     {

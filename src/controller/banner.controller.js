@@ -83,7 +83,6 @@ const getBanners = asyncHandler(async (req, res) => {
 // Get active banners
 const getActiveBanners = asyncHandler(async (req, res) => {
   const { limit = 5, type, cityName } = req.query;
-
   const query = { isActive: true };
   if (type) {
     query.type = type;

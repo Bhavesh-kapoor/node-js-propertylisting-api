@@ -4,12 +4,14 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { createAccessOrRefreshToken } from "../utils/helper.js";
 import { check, validationResult } from "express-validator";
-import { verifyOTP } from "../utils/otp.js";
+import { verifyOTP, createAndStoreOtp } from "../utils/otp.js";
 import s3ServiceWithProgress from "../config/awsS3.config.js";
 import { getPipeline, paginationResult } from "../utils/helper.js";
 import { SubscriptionPlan } from "../model/subscriptionPlan.model.js";
 import { SubscribedPlan } from "../model/subscribedPlan.model.js";
 import { addDays } from "date-fns";
+import { sendMail } from "../utils/helper.js";
+import { otpContent } from "../utils/emailContent.js";
 
 const s3Service = new s3ServiceWithProgress();
 
@@ -94,12 +96,9 @@ const registerUser = asyncHandler(async (req, res) => {
     createdUser.role === "owner"
   ) {
     const freePlan = await SubscriptionPlan.findOne({
-      $or: [
-        { "price.Monthly": 0 },
-        { "price.Quarterly": 0 },
-        { "price.Yearly": 0 },
-      ],
+      $or: [{ "price.Monthly": 0 }, { "price.Yearly": 0 }],
     });
+    console.log(freePlan);
     const currentDate = new Date();
     const endDate = addDays(currentDate, 3650);
     newSubscribedPlan = await SubscribedPlan.create({
@@ -610,6 +609,80 @@ const ActiveUserList = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, activeUsers, "Active Users"));
 });
 
+const forgetPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res
+      .status(400)
+      .json(new ApiError(400, null, "Please provide a mobile number"));
+  }
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new ApiError(404, "User not found.");
+  }
+  const otp = await createAndStoreOtp(email, "email");
+
+  const subject = `Your One-Time Password for password change`;
+  const htmlContent = otpContent(otp);
+  sendMail(email, subject, htmlContent);
+  //write the code here to send otp via email
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "OTP sent successfully"));
+});
+
+const verifyOtpAllowAccess = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+  console.log(email, otp)
+    const isVerified = await verifyOTP(email, otp);
+
+    console.log("isVerified",isVerified)
+    if (!isVerified) {
+      throw new ApiError(401, "Invalid OTP");
+    }
+    const user = await User.findOne({ email: email }).select(
+      "-password -refreshToken"
+    );
+    if (!user) {
+      return res.status(404).json(new ApiResponse(404, null, "Invalid email"));
+    }
+    let { accessToken, refreshToken } = await createAccessOrRefreshToken(
+      user._id
+    );
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          {
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            user: user,
+          },
+          "User verified!"
+        )
+      );
+});
+const setNewPassword = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  const { password } = req.body;
+  const user = await User.findById(userId);
+  user.password = password;
+  await user.save({ validateBeforeSave: false });
+  user.password = null;
+  user.refreshToken = null;
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "password updated successfully"));
+});
+
 export {
   registerUser,
   loginUser,
@@ -625,4 +698,7 @@ export {
   changeAvatarImage,
   updateAddress,
   ActiveUserList,
+  forgetPassword,
+  verifyOtpAllowAccess,
+  setNewPassword,
 };

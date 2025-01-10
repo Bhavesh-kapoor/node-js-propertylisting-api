@@ -119,6 +119,12 @@ const updateSubscriptionPlan = asyncHandler(async (req, res) => {
   if (!plan) {
     throw new ApiError(404, "Subscription plan not found");
   }
+  if (price.Monthly == null || price.Monthly < 0) {
+    throw new ApiError(400, "Price object is required");
+  }
+  if (price.Yearly == null || price.Yearly < 0) {
+    throw new ApiError(400, "Price object is required");
+  }
   const existingPlan = await SubscriptionPlan.findOne({
     _id: { $ne: id },
     $or: [{ name }, { title }],

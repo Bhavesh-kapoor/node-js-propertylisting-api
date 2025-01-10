@@ -78,4 +78,12 @@ router.get("/get-blog/:_id", findBlogById);
 /*-------------------------------------Banners---------------------------------------*/
 import { getActiveBanners } from "../controller/banner.controller.js";
 router.get("/get-active-banners", getActiveBanners);
+
+/*-------------------------------------password----------------------------------------*/
+import {
+  forgetPassword,
+  verifyOtpAllowAccess,
+} from "../controller/admin.controller.js";
+router.post("/forget-password", forgetPassword);
+router.post("/verify-password-reset", verifyOtpAllowAccess);
 export default router;

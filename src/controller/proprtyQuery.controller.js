@@ -117,13 +117,20 @@ const getQueries = asyncHandler(async (req, res) => {
     page = 1,
     limit = 10,
     status,
+    endDate,
+    startDate,
     propertyId,
-    sort = "createdAt",
-    order = "desc",
+    searchkey,
+    search = "",
+    sortkey = "createdAt",
+    sortdir = "desc",
   } = req.query;
-
   const matchStage = {};
-
+  if (startDate || endDate) {
+    matchStage.createdAt = {};
+    if (startDate) matchStage.createdAt.$gte = new Date(startDate);
+    if (endDate) matchStage.createdAt.$lte = new Date(endDate);
+  }
   if (status) matchStage.status = status;
   if (propertyId && isValidObjectId(propertyId))
     matchStage.propertyId = new mongoose.Types.ObjectId(propertyId);
@@ -131,8 +138,9 @@ const getQueries = asyncHandler(async (req, res) => {
   if (req.user.role !== "admin") {
     matchStage.propertyOwner = new mongoose.Types.ObjectId(req.user._id);
   }
-
-  const sortOrder = order === "desc" ? -1 : 1;
+  if (search && searchkey) {
+    matchStage[searchkey] = { $regex: search, $options: "i" };
+  }
 
   const pipeline = [
     { $match: matchStage },
@@ -172,7 +180,7 @@ const getQueries = asyncHandler(async (req, res) => {
         updatedAt: 1,
       },
     },
-    { $sort: { [sort]: sortOrder } },
+    { $sort: { [sortkey]: sortdir === "asc" ? 1 : -1 } },
     { $skip: (Number(page) - 1) * Number(limit) },
     { $limit: Number(limit) },
   ];

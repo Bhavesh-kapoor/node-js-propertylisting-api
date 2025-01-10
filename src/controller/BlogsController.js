@@ -21,18 +21,34 @@ const getAllBlogs = asyncHandler(async (req, res) => {
     sortkey = "createdAt",
     sortdir = "desc",
     title,
+    status,
+    endDate,
+    startDate,
+    searchkey,
+    search = "",
     category,
   } = req.query;
   const pageNumber = parseInt(page, 10);
   const limitNumber = parseInt(limit, 10);
   const skip = (pageNumber - 1) * limitNumber;
-  const matchConditions = {};
+  const matchStage = {isActive: true};
   if (title) {
-    matchConditions.title = { $regex: title, $options: "i" };
+    matchStage.title = { $regex: title, $options: "i" };
+  }
+  if (status) {
+    matchStage.status = status;
+  }
+  if (startDate || endDate) {
+    matchStage.createdAt = {};
+    if (startDate) matchStage.createdAt.$gte = new Date(startDate);
+    if (endDate) matchStage.createdAt.$lte = new Date(endDate);
+  }
+  if (search && searchkey) {
+    matchStage[searchkey] = { $regex: search, $options: "i" };
   }
 
   const aggregatePipeline = [
-    { $match: matchConditions },
+    { $match: matchStage },
     {
       $lookup: {
         from: "categories",
@@ -44,7 +60,7 @@ const getAllBlogs = asyncHandler(async (req, res) => {
     },
     { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
     { $addFields: { category: "$category.name" } },
-    { $sort: { [sortkey]: sortdir === "desc" ? -1 : 1 } },
+    { $sort: { [sortkey]: sortdir === "asc" ? 1 : -1 } },
     { $skip: skip },
     { $limit: limitNumber },
   ];
@@ -57,33 +73,30 @@ const getAllBlogs = asyncHandler(async (req, res) => {
 
   try {
     const getall = await Blog.aggregate(aggregatePipeline);
-    const totalBlogs = await Blog.countDocuments(matchConditions);
+    const totalBlogs = await Blog.countDocuments(matchStage);
 
-    res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          {
-            result: getall,
-            pagination: {
-              totalPages: Math.ceil(totalBlogs / limitNumber),
-              currentPage: pageNumber,
-              totalItems: totalBlogs,
-              itemsPerPage: limitNumber,
-            },
+    res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          result: getall,
+          pagination: {
+            totalPages: Math.ceil(totalBlogs / limitNumber),
+            currentPage: pageNumber,
+            totalItems: totalBlogs,
+            itemsPerPage: limitNumber,
           },
-          "Blog Data Fetch Successfully!"
-        )
-      );
+        },
+        "Blog Data Fetch Successfully!"
+      )
+    );
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
 const createBlog = asyncHandler(async (req, res) => {
-  const { title, description, isActive = true, shortDescription } =
-    req.body;
+  const { title, description, isActive = true, shortDescription } = req.body;
   const BlogData = {
     title,
     isActive,
@@ -103,13 +116,11 @@ const createBlog = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json(new ApiResponse(200, createdBlog, "Blogs created Successfully!"));
-
 });
 
 const updateBlog = asyncHandler(async (req, res) => {
   const blogId = req.params._id;
-  const { title, description, isActive, shortDescription } =
-    req.body;
+  const { title, description, isActive, shortDescription } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(blogId)) {
     throw new ApiError(400, "Invalid Blog ID");

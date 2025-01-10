@@ -9,9 +9,9 @@ const subscriptionPlanSchema = new mongoose.Schema(
     },
     title: {
       type: String,
-      required: [true, "Plan title is required"],
       trim: true,
       unique: true,
+      sparse: true,
       lowercase: true,
     },
     description: {
@@ -44,7 +44,6 @@ const subscriptionPlanSchema = new mongoose.Schema(
     icon: {
       type: String,
       trim: true,
-      unique: true,
       lowercase: true,
     },
     isActive: {

@@ -58,7 +58,11 @@ const registerUser = asyncHandler(async (req, res) => {
       .status(200)
       .json(new ApiResponse(200, null, "User already exists!"));
   }
-
+  if (role === "admin") {
+    return res
+      .status(403)
+      .json(new ApiResponse(403, null, "Admin registration is not allowed!"));
+  }
   // Handle file upload (avatar)
   let avatarUrl;
   if (req.file) {
@@ -98,7 +102,6 @@ const registerUser = asyncHandler(async (req, res) => {
     const freePlan = await SubscriptionPlan.findOne({
       $or: [{ "price.Monthly": 0 }, { "price.Yearly": 0 }],
     });
-    console.log(freePlan);
     const currentDate = new Date();
     const endDate = addDays(currentDate, 3650);
     newSubscribedPlan = await SubscribedPlan.create({
@@ -633,42 +636,42 @@ const forgetPassword = asyncHandler(async (req, res) => {
 
 const verifyOtpAllowAccess = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
-  console.log(email, otp)
-    const isVerified = await verifyOTP(email, otp);
+  console.log(email, otp);
+  const isVerified = await verifyOTP(email, otp);
 
-    console.log("isVerified",isVerified)
-    if (!isVerified) {
-      throw new ApiError(401, "Invalid OTP");
-    }
-    const user = await User.findOne({ email: email }).select(
-      "-password -refreshToken"
-    );
-    if (!user) {
-      return res.status(404).json(new ApiResponse(404, null, "Invalid email"));
-    }
-    let { accessToken, refreshToken } = await createAccessOrRefreshToken(
-      user._id
-    );
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
+  console.log("isVerified", isVerified);
+  if (!isVerified) {
+    throw new ApiError(401, "Invalid OTP");
+  }
+  const user = await User.findOne({ email: email }).select(
+    "-password -refreshToken"
+  );
+  if (!user) {
+    return res.status(404).json(new ApiResponse(404, null, "Invalid email"));
+  }
+  let { accessToken, refreshToken } = await createAccessOrRefreshToken(
+    user._id
+  );
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
 
-    return res
-      .status(200)
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", refreshToken, options)
-      .json(
-        new ApiResponse(
-          200,
-          {
-            accessToken: accessToken,
-            refreshToken: refreshToken,
-            user: user,
-          },
-          "User verified!"
-        )
-      );
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          user: user,
+        },
+        "User verified!"
+      )
+    );
 });
 const setNewPassword = asyncHandler(async (req, res) => {
   const userId = req.user?._id;

@@ -89,14 +89,12 @@ const verifyOrder = asyncHandler(async (req, res, next) => {
       return res.status(400).json({ error: "Payment verification failed" });
     }
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
-    console.log("payment", payment);
     const transaction = await Transaction.findOne({
       $or: [
         { transactionId: razorpay_order_id },
         { transactionId: razorpay_payment_id },
       ],
     });
-    console.log("transaction", transaction);
     transaction.transactionId = payment.id;
     req.paymentDetails = payment;
     req.transaction = transaction;

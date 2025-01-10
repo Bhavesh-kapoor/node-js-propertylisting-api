@@ -38,22 +38,6 @@ const createSubscriptionPlan = asyncHandler(async (req, res) => {
       );
   }
 
-  // if (
-  //   price.Quarterly === undefined ||
-  //   price.Quarterly === null ||
-  //   price.Quarterly < 0
-  // ) {
-  //   return res
-  //     .status(400)
-  //     .json(
-  //       new ApiResponse(
-  //         400,
-  //         null,
-  //         "Quarterly price is required and must be 0 or greater."
-  //       )
-  //     );
-  // }
-
   if (price.Yearly === undefined || price.Yearly === null || price.Yearly < 0) {
     return res
       .status(400)
@@ -83,6 +67,7 @@ const createSubscriptionPlan = asyncHandler(async (req, res) => {
     const fileUrl = await s3Service.uploadFile(req.file, s3Path);
     icon = fileUrl.url;
   }
+
   const newPlan = new SubscriptionPlan({
     name,
     title,

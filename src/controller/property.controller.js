@@ -598,9 +598,8 @@ const updateProperty = asyncHandler(async (req, res) => {
   if (features) property.features = features;
   if (owner) property.owner = owner;
   if (videoUrl) property.videoUrl = videoUrl;
-  if (isActive) property.isActive = isActive;
+  property.isActive = isActive ? (isActive === "true" ? true : false) : false;
   if (amenities) property.amenities = amenities;
-
   if (address) {
     property.address = {
       ...property.address,

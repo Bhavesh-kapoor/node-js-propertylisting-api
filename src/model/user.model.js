@@ -50,16 +50,12 @@ const userSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
-      required: true,
-      unique: true,
       trim: true,
       match: /^\d{10}$/,
     },
     countryCode: {
       type: String,
-      required: true,
       trim: true,
-      default: "+91",
     },
     isMobileVerified: {
       type: Boolean,

@@ -49,10 +49,11 @@ const registerUser = asyncHandler(async (req, res) => {
     permissions,
   } = req.body;
 
-  const query = { $or: [{ email }] };
-  if (mobile) query.$or.push({ mobile });
+  // const query = { $or: [{ email }] };
+  // if (mobile) query.$or.push({ mobile });
 
-  const existedUser = await User.findOne(query);
+  const existedUser = await User.findOne({email});
+  console.log("existedUser",existedUser)
   if (existedUser) {
     return res
       .status(200)

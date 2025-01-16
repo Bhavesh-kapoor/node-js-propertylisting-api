@@ -16,13 +16,14 @@ const transporter = nodemailer.createTransport({
 const mailOptions=(receiverEmail,subject,htmlContent)=>{
   const mailOptions ={
     from:{
-      name: "multivendor",
+      name: "Makaan Directory",
       address:process.env.ADMIN_EMAIL
     },
     to:receiverEmail,
     subject:subject,
     html:htmlContent
   }
+  
 return(mailOptions)
 }
 export {transporter,mailOptions};

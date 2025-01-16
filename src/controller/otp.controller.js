@@ -11,7 +11,6 @@ const sendOtpMobile = asyncHandler(async (req, res) => {
   const { mobile, flag } = req.body;
   console.log(mobile, flag);
   if (flag) {
-    console.log("check");
     if (flag === "signup") {
       const existedUser = await User.findOne({ mobile: mobile.trim() });
       console.log(existedUser);
@@ -29,7 +28,6 @@ const sendOtpMobile = asyncHandler(async (req, res) => {
   }
 
   const otp = await createAndStoreOtp(mobile, "mobile");
-  console.log("Otp", otp);
   return res
     .status(200)
     .json(new ApiResponse(200, null, "OTP sent successfully"));

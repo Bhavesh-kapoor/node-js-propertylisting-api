@@ -62,9 +62,9 @@ const propertySchema = new mongoose.Schema(
     },
     address: addressSchema,
     price: {
-      type: Number,
+      type: String,
       required: [true, "Price is required"],
-      min: [0, "Price cannot be negative"],
+      // min: [0, "Price cannot be negative"],
     },
     propertyType: {
       type: String,

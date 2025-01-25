@@ -331,7 +331,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   const updateFields = {};
   if (name) updateFields.name = name;
   if (email) updateFields.email = email;
-  if (isActive) updateFields.isActive = isActive;
+  if (isActive) updateFields.isActive = isActive==="true";
   if (priorityRank) updateFields.priorityRank = priorityRank;
 
   if (isEmailVerified !== undefined)
